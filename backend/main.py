@@ -6,10 +6,10 @@ from datetime import datetime
 
 app = FastAPI()
 
-# ✅ CORS setup (you can restrict origins later for security)
+# ✅ CORS setup (allow all for now, restrict later)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -24,6 +24,7 @@ async def startup_db_check():
     except Exception as e:
         print("❌ MongoDB connection failed:", e)
 
+
 # ✅ Health check with DB status
 @app.get("/api/health")
 async def health_check():
@@ -32,6 +33,7 @@ async def health_check():
         return {"status": "ok", "message": "Backend + DB connected 🚀"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
 
 # ✅ Get all vehicles
 @app.get("/api/vehicles")
@@ -45,23 +47,34 @@ async def get_vehicles():
         del v["_id"]
     return vehicles
 
-# ✅ Create new vehicle entry (with plant field)
+
+# ✅ Create new vehicle entry (prevent duplicates)
 @app.post("/api/vehicles")
 async def create_vehicle(data: dict):
     collection = get_collection("vehicles")
 
+    # 🔍 Check if vehicle already inside
+    existing = await collection.find_one({
+        "vehicleNo": data.get("vehicleNo"),
+        "status": "inside"
+    })
+    if existing:
+        return {"status": "duplicate", "message": f"⚠️ Vehicle {data.get('vehicleNo')} is already inside."}
+
+    # 🚗 Add new vehicle
     vehicle = {
         "vehicleNo": data.get("vehicleNo"),
         "containerId": data.get("containerId"),
         "type": data.get("type", "Unknown"),
-        "plant": data.get("plant", None),   # ✅ Save plant
+        "plant": data.get("plant", None),
         "inTime": datetime.now().isoformat(),
         "outTime": None,
         "status": "inside",
     }
 
     result = await collection.insert_one(vehicle)
-    return {"id": str(result.inserted_id), "message": "Vehicle added"}
+    return {"id": str(result.inserted_id), "status": "ok", "message": "✅ Vehicle added"}
+
 
 # ✅ Mark vehicle as exited
 @app.put("/api/vehicles/{id}/exit")
@@ -69,6 +82,9 @@ async def mark_exit(id: str):
     collection = get_collection("vehicles")
     await collection.update_one(
         {"_id": ObjectId(id)},
-        {"$set": {"outTime": datetime.now().isoformat(), "status": "exited"}}
+        {"$set": {
+            "outTime": datetime.now().isoformat(),
+            "status": "exited"
+        }}
     )
-    return {"message": "Vehicle marked as exited"}
+    return {"message": "✅ Vehicle marked as exited"}
