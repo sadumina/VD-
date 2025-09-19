@@ -6,16 +6,16 @@ from datetime import datetime, timezone
 
 app = FastAPI()
 
-# ✅ CORS setup (allow all for now, restrict later)
+# ✅ Allow frontend requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],   # You can restrict this later to your frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ✅ Run DB check at startup
+# ✅ Check MongoDB connection on startup
 @app.on_event("startup")
 async def startup_db_check():
     try:
@@ -25,7 +25,7 @@ async def startup_db_check():
         print("❌ MongoDB connection failed:", e)
 
 
-# ✅ Health check with DB status
+# ✅ Health check API
 @app.get("/api/health")
 async def health_check():
     try:
@@ -41,19 +41,19 @@ async def get_vehicles():
     collection = get_collection("vehicles")
     vehicles = await collection.find().to_list(100)
 
-    # Convert ObjectId to string for frontend compatibility
+    # Convert ObjectId → string for frontend
     for v in vehicles:
         v["id"] = str(v["_id"])
         del v["_id"]
     return vehicles
 
 
-# ✅ Create new vehicle entry (prevent duplicates)
+# ✅ Add new vehicle entry
 @app.post("/api/vehicles")
 async def create_vehicle(data: dict):
     collection = get_collection("vehicles")
 
-    # 🔍 Check if vehicle already inside
+    # 🔍 Prevent duplicates: vehicle already inside?
     existing = await collection.find_one({
         "vehicleNo": data.get("vehicleNo"),
         "status": "inside"
@@ -64,15 +64,15 @@ async def create_vehicle(data: dict):
             "message": f"⚠️ Vehicle {data.get('vehicleNo')} is already inside."
         }
 
-    # 🚗 Add new vehicle (timestamps in UTC, seconds precision, no microseconds)
-    now_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    # 🚗 New vehicle entry
+    now_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
     vehicle = {
         "vehicleNo": data.get("vehicleNo"),
         "containerId": data.get("containerId"),
         "type": data.get("type", "Unknown"),
         "plant": data.get("plant", None),
-        "inTime": now_utc,
+        "inTime": now_utc,   # ✅ always UTC
         "outTime": None,
         "status": "inside",
     }
@@ -81,17 +81,17 @@ async def create_vehicle(data: dict):
     return {"id": str(result.inserted_id), "status": "ok", "message": "✅ Vehicle added"}
 
 
-# ✅ Mark vehicle as exited
+# ✅ Mark vehicle exit
 @app.put("/api/vehicles/{id}/exit")
 async def mark_exit(id: str):
     collection = get_collection("vehicles")
 
-    now_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    now_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
     await collection.update_one(
         {"_id": ObjectId(id)},
         {"$set": {
-            "outTime": now_utc,
+            "outTime": now_utc,   # ✅ always UTC
             "status": "exited"
         }}
     )

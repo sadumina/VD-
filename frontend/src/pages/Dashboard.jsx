@@ -244,36 +244,39 @@ export default function DashboardPage() {
           <Text type="secondary">–</Text>
         ),
     },
-    {
-      title: "In Time",
-      dataIndex: "inTime",
-      sorter: (a, b) => new Date(a.inTime) - new Date(b.inTime),
-      defaultSortOrder: "descend",
-      render: (time) => (
-        <Space direction="vertical" size="small">
-          <Text>{dayjs(time).format('MMM DD, YYYY')}</Text>
-          <Text type="secondary" style={{ fontSize: '12px' }}>
-            {dayjs(time).format('HH:mm')}
-          </Text>
-        </Space>
-      )
-    },
-    {
-      title: "Out Time",
-      dataIndex: "outTime",
-      render: (t, r) => t ? (
-        <Space direction="vertical" size="small">
-          <Text>{dayjs(t).format('MMM DD, YYYY')}</Text>
-          <Text type="secondary" style={{ fontSize: '12px' }}>
-            {dayjs(t).format('HH:mm')}
-          </Text>
-        </Space>
-      ) : (
-        r.status === "inside" ? 
-        <Tag color="processing" icon={<ClockCircleOutlined />}>Inside</Tag> : 
-        <Text type="secondary">–</Text>
-      ),
-    },
+   {
+  title: "In Time",
+  dataIndex: "inTime",
+  sorter: (a, b) => new Date(a.inTime) - new Date(b.inTime),
+  defaultSortOrder: "descend",
+  render: (time) => (
+    <Space direction="vertical" size="small">
+      {/* ✅ Parse as UTC, then convert to Sri Lanka local */}
+      <Text>{dayjs.utc(time).tz("Asia/Colombo").format("MMM DD, YYYY")}</Text>
+      <Text type="secondary" style={{ fontSize: "12px" }}>
+        {dayjs.utc(time).tz("Asia/Colombo").format("HH:mm")}
+      </Text>
+    </Space>
+  ),
+},
+{
+  title: "Out Time",
+  dataIndex: "outTime",
+  render: (t, r) =>
+    t ? (
+      <Space direction="vertical" size="small">
+        <Text>{dayjs.utc(t).tz("Asia/Colombo").format("MMM DD, YYYY")}</Text>
+        <Text type="secondary" style={{ fontSize: "12px" }}>
+          {dayjs.utc(t).tz("Asia/Colombo").format("HH:mm")}
+        </Text>
+      </Space>
+    ) : r.status === "inside" ? (
+      <Tag color="processing" icon={<ClockCircleOutlined />}>Inside</Tag>
+    ) : (
+      <Text type="secondary">–</Text>
+    ),
+},
+
     {
       title: "Duration",
       render: (_, record) => {
