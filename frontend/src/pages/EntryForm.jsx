@@ -1,153 +1,367 @@
 import { useState } from "react";
-import { Form, Input, Button, Card, Typography, message } from "antd";
+import { Form, Input, Button, Card, Typography, message, Select, Row, Col, Space } from "antd";
 import { useNavigate } from "react-router-dom";
 import { createVehicle } from "../services/api";
+import {
+  CarOutlined,
+  ContainerOutlined,
+  CameraOutlined,
+  CheckCircleOutlined,
+  ArrowRightOutlined,
+  FormOutlined,
+} from "@ant-design/icons";
 
-
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 export default function EntryFormPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // ✅ Detect vehicle type based on plate
   const detectVehicleType = (plate, containerId) => {
-    // If container ID is provided, assume it's a container truck
-    if (containerId && containerId.trim() !== "") {
-      return "Container Truck";
-    }
-
+    if (containerId && containerId.trim() !== "") return "Container Truck";
     if (!plate) return "Unknown";
     const p = plate.toUpperCase();
-
     if (p.startsWith("L")) return "Lorry";
     if (p.startsWith("T")) return "Truck";
     if (p.startsWith("V")) return "Van";
-
-    // Default fallback
     return "Car";
   };
 
-
   const handleSubmit = async (values) => {
-  setLoading(true);
-  try {
-    // Pass both plate + containerId
-    const vehicleType = detectVehicleType(values.vehicleNo, values.containerId);
+    setLoading(true);
+    try {
+      const vehicleType = detectVehicleType(values.vehicleNo, values.containerId);
+      const res = await createVehicle({ ...values, type: vehicleType });
 
-    const res = await createVehicle({
-      ...values,
-      type: vehicleType,
-    });
-
-    if (res.data.status === "duplicate" || res.data.error) {
-      message.warning("⚠️ This vehicle is already inside.");
-    } else {
-      message.success("✅ Vehicle entered successfully!");
-      navigate("/dashboard");
+      if (res.data.status === "duplicate" || res.data.error) {
+        message.warning("⚠️ This vehicle is already inside.");
+      } else {
+        message.success("✅ Vehicle entered successfully!");
+        navigate("/dashboard");
+      }
+    } catch {
+      message.error("⚠ Failed to add vehicle");
+    } finally {
+      setLoading(false);
     }
-  } catch {
-    message.error("❌ Failed to add vehicle");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
-    <div
-  style={{
-    padding: "40px 20px",
-    background: "#F5F5F5",
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  }}
->
-  <Card
-    style={{
-      width: "100%",
-      maxWidth: 520,
-      borderRadius: 16,
-      boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
-      padding: "10px 20px",
-    }}
-  >
-    <Title
-      level={3}
-      style={{
-        color: "#2E7D32",
-        marginBottom: 10,
-        textAlign: "center",
-        fontWeight: 600,
-      }}
-    >
-      🚦 Vehicle Entry Form
-    </Title>
-    <p style={{ textAlign: "center", color: "#666", marginBottom: 30 }}>
-      Please log vehicle details for entry into the premises
-    </p>
-
-    <Form layout="vertical" onFinish={handleSubmit} size="large">
-      {/* Vehicle Plate */}
-      <Form.Item
-        name="vehicleNo"
-        label={<span style={{ fontWeight: 500 }}>Vehicle No (Plate)</span>}
-        rules={[{ required: true, message: "Please enter vehicle number" }]}
-      >
-        <Input
-          placeholder="e.g. WP-KL 4455"
-          style={{ borderRadius: 8, padding: "10px 12px" }}
-        />
-      </Form.Item>
-
-      {/* Container ID */}
-      <Form.Item
-        name="containerId"
-        label={<span style={{ fontWeight: 500 }}>Container ID (Optional)</span>}
-      >
-        <Input
-          placeholder="e.g. CMAU 765432 1"
-          style={{ borderRadius: 8, padding: "10px 12px" }}
-        />
-      </Form.Item>
-
-      {/* Future camera integration */}
-      <div
-        style={{
-          background: "#FAFAFA",
-          border: "1px dashed #CCC",
-          borderRadius: 8,
-          padding: "12px",
-          textAlign: "center",
-          color: "#888",
-          marginBottom: 20,
-        }}
-      >
-        📷 Camera/ANPR integration placeholder
+    <div style={{ 
+      padding: '24px', 
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)', 
+      minHeight: "100vh" 
+    }}>
+      {/* Header Section */}
+      <div style={{ marginBottom: '32px', textAlign: 'center' }}>
+        <Title level={2} style={{ 
+          color: '#2c3e50', 
+          marginBottom: '8px',
+          fontWeight: '700',
+          fontSize: '32px'
+        }}>
+          <CarOutlined style={{ marginRight: '12px' }} />
+          Vehicle Entry System
+        </Title>
+        <Text type="secondary" style={{ fontSize: '16px' }}>
+          Secure vehicle registration and entry management
+        </Text>
       </div>
 
-      {/* Submit */}
-      <Form.Item>
-        <Button
-          type="primary"
-          htmlType="submit"
-          loading={loading}
-          size="large"
-          block
-          style={{
-            backgroundColor: "#2E7D32",
-            borderColor: "#2E7D32",
-            borderRadius: 8,
-            fontWeight: 500,
-          }}
-        >
-          Submit Entry
-        </Button>
-      </Form.Item>
-    </Form>
-  </Card>
-</div>
+      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        <Row gutter={[32, 32]}>
+          {/* Main Form Card */}
+          <Col xs={24} lg={14}>
+            <Card
+              style={{
+                borderRadius: '16px',
+                boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+                border: 'none'
+              }}
+              bodyStyle={{ padding: '40px' }}
+            >
+              <div style={{ marginBottom: '32px' }}>
+                <Title level={3} style={{ 
+                  color: '#2c3e50', 
+                  marginBottom: '8px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  <FormOutlined style={{ marginRight: '12px', color: '#667eea' }} />
+                  Vehicle Information
+                </Title>
+                <Text type="secondary" style={{ fontSize: '14px' }}>
+                  Please provide accurate vehicle details for entry registration
+                </Text>
+              </div>
 
+              <Form layout="vertical" onFinish={handleSubmit} size="large">
+                {/* Vehicle Number */}
+                <Form.Item
+                  name="vehicleNo"
+                  label={
+                    <span style={{ fontWeight: "600", color: "#2c3e50", fontSize: '16px' }}>
+                      Vehicle Number (License Plate)
+                    </span>
+                  }
+                  rules={[{ required: true, message: "Please enter vehicle number" }]}
+                >
+                  <Input
+                    placeholder="e.g. WP-KL 4455"
+                    prefix={<CarOutlined style={{ color: '#667eea' }} />}
+                    style={{
+                      borderRadius: "12px",
+                      padding: "14px 16px",
+                      fontSize: "16px",
+                      border: "2px solid #e2e8f0",
+                      transition: "all 0.3s ease",
+                    }}
+                  />
+                </Form.Item>
+
+                {/* Container ID */}
+                <Form.Item
+                  name="containerId"
+                  label={
+                    <span style={{ fontWeight: "600", color: "#2c3e50", fontSize: '16px' }}>
+                      Container ID <Text type="secondary">(Optional)</Text>
+                    </span>
+                  }
+                >
+                  <Input
+                    placeholder="e.g. CMAU 765432 1"
+                    prefix={<ContainerOutlined style={{ color: '#667eea' }} />}
+                    style={{
+                      borderRadius: "12px",
+                      padding: "14px 16px",
+                      fontSize: "16px",
+                      border: "2px solid #e2e8f0",
+                      transition: "all 0.3s ease",
+                    }}
+                  />
+                </Form.Item>
+
+                {/* Plant Selection */}
+                <Form.Item
+                  name="plant"
+                  label={
+                    <span style={{ fontWeight: "600", color: "#2c3e50", fontSize: '16px' }}>
+                      Destination Plant
+                    </span>
+                  }
+                  rules={[{ required: true, message: "Please select a plant" }]}
+                >
+                  <Select
+                    placeholder="Choose destination plant"
+                    style={{ fontSize: "16px" }}
+                    size="large"
+                  >
+                    <Select.Option value="Badalgama">
+                      <Space>
+                        <div
+                          style={{
+                            width: "8px",
+                            height: "8px",
+                            borderRadius: "50%",
+                            backgroundColor: "#52c41a",
+                          }}
+                        />
+                        Badalgama Plant
+                      </Space>
+                    </Select.Option>
+                    <Select.Option value="Madampe">
+                      <Space>
+                        <div
+                          style={{
+                            width: "8px",
+                            height: "8px",
+                            borderRadius: "50%",
+                            backgroundColor: "#ff7875",
+                          }}
+                        />
+                        Madampe Plant
+                      </Space>
+                    </Select.Option>
+                  </Select>
+                </Form.Item>
+
+                {/* Submit Button */}
+                <Form.Item style={{ marginTop: "32px", marginBottom: "0" }}>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    loading={loading}
+                    size="large"
+                    block
+                    style={{
+                      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                      border: "none",
+                      borderRadius: "12px",
+                      padding: "16px",
+                      height: "auto",
+                      fontSize: "16px",
+                      fontWeight: "600",
+                      boxShadow: "0 8px 24px rgba(102, 126, 234, 0.3)",
+                      transition: "all 0.3s ease",
+                    }}
+                    icon={<CheckCircleOutlined />}
+                  >
+                    Complete Vehicle Entry
+                    <ArrowRightOutlined style={{ marginLeft: "8px" }} />
+                  </Button>
+                </Form.Item>
+              </Form>
+            </Card>
+          </Col>
+
+          {/* Right Side Content */}
+          <Col xs={24} lg={10}>
+            {/* Process Steps Card */}
+            <Card
+              style={{
+                borderRadius: "16px",
+                boxShadow: "0 6px 20px rgba(0,0,0,0.08)",
+                border: 'none',
+                marginBottom: "24px"
+              }}
+              bodyStyle={{ padding: "32px" }}
+            >
+              <Title level={4} style={{ color: "#2c3e50", marginBottom: "24px" }}>
+                Entry Process
+              </Title>
+              
+              <div style={{ position: "relative" }}>
+                <div style={{ position: "absolute", left: "12px", top: "40px", bottom: "40px", width: "2px", background: "#e2e8f0" }} />
+                
+                <Space direction="vertical" size="large" style={{ width: "100%" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start" }}>
+                    <div
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "50%",
+                        background: "#52c41a",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginRight: "16px",
+                        zIndex: 1,
+                      }}
+                    >
+                      <span style={{ color: "white", fontSize: "12px", fontWeight: "bold" }}>1</span>
+                    </div>
+                    <div>
+                      <Text strong style={{ color: "#2c3e50" }}>Vehicle Identification</Text>
+                      <br />
+                      <Text type="secondary" style={{ fontSize: "13px" }}>
+                        Enter vehicle number and container details
+                      </Text>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "flex-start" }}>
+                    <div
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "50%",
+                        background: "#1890ff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginRight: "16px",
+                        zIndex: 1,
+                      }}
+                    >
+                      <span style={{ color: "white", fontSize: "12px", fontWeight: "bold" }}>2</span>
+                    </div>
+                    <div>
+                      <Text strong style={{ color: "#2c3e50" }}>Plant Selection</Text>
+                      <br />
+                      <Text type="secondary" style={{ fontSize: "13px" }}>
+                        Choose destination plant facility
+                      </Text>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "flex-start" }}>
+                    <div
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "50%",
+                        background: "#722ed1",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginRight: "16px",
+                        zIndex: 1,
+                      }}
+                    >
+                      <span style={{ color: "white", fontSize: "12px", fontWeight: "bold" }}>3</span>
+                    </div>
+                    <div>
+                      <Text strong style={{ color: "#2c3e50" }}>System Registration</Text>
+                      <br />
+                      <Text type="secondary" style={{ fontSize: "13px" }}>
+                        Automatic entry logging and tracking
+                      </Text>
+                    </div>
+                  </div>
+                </Space>
+              </div>
+            </Card>
+
+            {/* Quick Stats Card */}
+            <Card
+              style={{
+                marginTop: "24px",
+                borderRadius: "16px",
+                background: "linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)",
+                boxShadow: "0 6px 20px rgba(0,0,0,0.08)",
+                border: 'none'
+              }}
+              bodyStyle={{ padding: "24px" }}
+            >
+              <Title level={5} style={{ color: "#2c3e50", marginBottom: "16px" }}>
+                System Status
+              </Title>
+              <Row gutter={[16, 16]}>
+                <Col span={12}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ 
+                      fontSize: '20px', 
+                      fontWeight: 'bold', 
+                      color: '#52c41a',
+                      marginBottom: '4px'
+                    }}>
+                      Online
+                    </div>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      System Status
+                    </Text>
+                  </div>
+                </Col>
+                <Col span={12}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ 
+                      fontSize: '20px', 
+                      fontWeight: 'bold', 
+                      color: '#1890ff',
+                      marginBottom: '4px'
+                    }}>
+                      24/7
+                    </div>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      Monitoring
+                    </Text>
+                  </div>
+                </Col>
+              </Row>
+            </Card>
+          </Col>
+        </Row>
+      </div>
+    </div>
   );
 }
