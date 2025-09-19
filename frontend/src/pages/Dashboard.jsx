@@ -15,13 +15,13 @@ import {
   Col,
   Statistic,
   Tabs,
-  Divider,
   Avatar,
 } from "antd";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { formatDuration } from "../services/vehicleUtils";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import {
   CarOutlined,
   CalendarOutlined,
@@ -36,8 +36,23 @@ import {
   WarningOutlined,
 } from "@ant-design/icons";
 
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
+
+// ✅ Unified duration formatter
+const formatDuration = (inTime, outTime) => {
+  if (!inTime) return "N/A";
+  const start = dayjs.utc(inTime);   // ✅ Force UTC parse
+  const end = outTime ? dayjs.utc(outTime) : dayjs.utc();
+  if (!start.isValid() || !end.isValid()) return "Invalid";
+  const diffMinutes = end.diff(start, "minute");
+  const hours = Math.floor(diffMinutes / 60);
+  const minutes = diffMinutes % 60;
+  return `${hours}h ${minutes}m`;
+};
 
 export default function DashboardPage() {
   const [vehicles, setVehicles] = useState([]);
@@ -128,11 +143,13 @@ export default function DashboardPage() {
     printWindow.print();
   };
 
+  // ✅ Safer hours calculator
   const getDurationHours = (inTime, outTime) => {
-    const start = dayjs(inTime);
-    const end = outTime ? dayjs(outTime) : dayjs();
-    return end.diff(start, "hour");
-  };
+  const start = dayjs.utc(inTime);   // ✅ Force UTC parse
+  const end = outTime ? dayjs.utc(outTime) : dayjs.utc();
+  if (!start.isValid() || !end.isValid()) return 0;
+  return end.diff(start, "hour");
+};
 
   useEffect(() => {
     vehicles.forEach((v) => {

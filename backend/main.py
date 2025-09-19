@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import get_collection, db
 from bson import ObjectId
-from datetime import datetime
+from datetime import datetime, timezone
 
 app = FastAPI()
 
@@ -59,15 +59,20 @@ async def create_vehicle(data: dict):
         "status": "inside"
     })
     if existing:
-        return {"status": "duplicate", "message": f"⚠️ Vehicle {data.get('vehicleNo')} is already inside."}
+        return {
+            "status": "duplicate",
+            "message": f"⚠️ Vehicle {data.get('vehicleNo')} is already inside."
+        }
 
-    # 🚗 Add new vehicle
+    # 🚗 Add new vehicle (timestamps in UTC, seconds precision, no microseconds)
+    now_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
     vehicle = {
         "vehicleNo": data.get("vehicleNo"),
         "containerId": data.get("containerId"),
         "type": data.get("type", "Unknown"),
         "plant": data.get("plant", None),
-        "inTime": datetime.now().isoformat(),
+        "inTime": now_utc,
         "outTime": None,
         "status": "inside",
     }
@@ -80,10 +85,13 @@ async def create_vehicle(data: dict):
 @app.put("/api/vehicles/{id}/exit")
 async def mark_exit(id: str):
     collection = get_collection("vehicles")
+
+    now_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
     await collection.update_one(
         {"_id": ObjectId(id)},
         {"$set": {
-            "outTime": datetime.now().isoformat(),
+            "outTime": now_utc,
             "status": "exited"
         }}
     )
