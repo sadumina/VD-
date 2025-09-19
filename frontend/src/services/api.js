@@ -1,8 +1,22 @@
+// src/api.js
+
 import axios from "axios";
 
-// Make sure this matches backend port
-const API = "https://haycarb-vehicle-detector.onrender.com";
+const API_BASE = "https://haycarb-vehicle-detector.onrender.com/api";
 
-export const fetchVehicles = () => axios.get(`${API}/vehicles`);
-export const createVehicle = (data) => axios.post(`${API}/vehicles`, data);
-export const markExit = (id) => axios.put(`${API}/vehicles/${id}/exit`);
+export async function fetchVehicles() {
+  const res = await axios.get(`${API_BASE}/vehicles`);
+  return res.data;
+}
+
+export async function createVehicle(vehicleData) {
+  const res = await axios.post(`${API_BASE}/vehicles`, vehicleData, {
+    headers: { "Content-Type": "application/json" },
+  });
+  return res.data;
+}
+
+export async function markVehicleExit(vehicleId) {
+  const res = await axios.put(`${API_BASE}/vehicles/${vehicleId}/exit`);
+  return res.data;
+}
