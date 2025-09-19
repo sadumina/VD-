@@ -1,14 +1,31 @@
-/* Global */
-body {
+/* ---------------------------------------------------
+   Google Fonts (must come first)
+--------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ---------------------------------------------------
+   Global Resets
+--------------------------------------------------- */
+* {
   margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   font-family: 'Inter', sans-serif;
   background: #f5f5f5;
   color: #1a1a1a;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-/* AntD Overrides */
+/* ---------------------------------------------------
+   CSS Variables
+--------------------------------------------------- */
 :root {
   --primary-color: #2E7D32;
   --secondary-color: #43A047;
@@ -16,17 +33,21 @@ body {
   --card-radius: 12px;
 }
 
-/* Cards */
+/* ---------------------------------------------------
+   AntD Overrides - Cards
+--------------------------------------------------- */
 .ant-card {
   border-radius: var(--card-radius) !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transition: all 0.2s ease-in-out;
 }
 .ant-card:hover {
-  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
-/* Buttons */
+/* ---------------------------------------------------
+   AntD Overrides - Buttons
+--------------------------------------------------- */
 .ant-btn-primary {
   background: var(--primary-color);
   border-color: var(--primary-color);
@@ -38,8 +59,69 @@ body {
   border-color: var(--secondary-color);
 }
 
-/* Sidebar Menu */
+/* ---------------------------------------------------
+   AntD Overrides - Sidebar Menu
+--------------------------------------------------- */
 .ant-menu-dark .ant-menu-item-selected {
   background-color: rgba(255, 255, 255, 0.25) !important;
   border-radius: 8px;
+}
+
+/* ---------------------------------------------------
+   Responsiveness
+--------------------------------------------------- */
+
+/* Tablets */
+@media (max-width: 992px) {
+  body {
+    font-size: 15px;
+  }
+  .ant-card {
+    margin: 12px;
+  }
+  .ant-btn-primary {
+    font-size: 15px;
+    padding: 10px 14px;
+  }
+}
+
+/* Mobiles */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+    padding: 8px;
+    background: #ffffff;
+  }
+
+  .ant-card {
+    margin: 8px;
+    border-radius: 10px !important;
+  }
+
+  .ant-btn-primary {
+    width: 100%; /* full width buttons */
+  }
+
+  .ant-menu {
+    font-size: 14px;
+  }
+}
+
+/* Small Mobiles */
+@media (max-width: 480px) {
+  body {
+    font-size: 13px;
+    padding: 6px;
+  }
+
+  .ant-card {
+    margin: 6px;
+    padding: 10px;
+    box-shadow: none; /* flatter UI */
+  }
+
+  .ant-btn-primary {
+    font-size: 14px;
+    padding: 10px;
+  }
 }
