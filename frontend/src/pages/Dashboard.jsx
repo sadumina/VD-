@@ -42,10 +42,9 @@ dayjs.extend(timezone);
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
-// ✅ Unified duration formatter
 const formatDuration = (inTime, outTime) => {
   if (!inTime) return "N/A";
-  const start = dayjs.utc(inTime);   // ✅ Force UTC parse
+  const start = dayjs.utc(inTime);
   const end = outTime ? dayjs.utc(outTime) : dayjs.utc();
   if (!start.isValid() || !end.isValid()) return "Invalid";
   const diffMinutes = end.diff(start, "minute");
@@ -92,7 +91,6 @@ export default function DashboardPage() {
   const exportVehiclePDF = (vehicle) => {
     const doc = new jsPDF();
     doc.text("Haycarb Vehicle Report", 14, 15);
-
     autoTable(doc, {
       head: [["Field", "Value"]],
       body: [
@@ -106,7 +104,6 @@ export default function DashboardPage() {
         ["Status", vehicle.status === "inside" ? "Inside" : "Exited"],
       ],
     });
-
     doc.save(`${vehicle.vehicleNo || "vehicle"}.pdf`);
   };
 
@@ -143,13 +140,12 @@ export default function DashboardPage() {
     printWindow.print();
   };
 
-  // ✅ Safer hours calculator
   const getDurationHours = (inTime, outTime) => {
-  const start = dayjs.utc(inTime);   // ✅ Force UTC parse
-  const end = outTime ? dayjs.utc(outTime) : dayjs.utc();
-  if (!start.isValid() || !end.isValid()) return 0;
-  return end.diff(start, "hour");
-};
+    const start = dayjs.utc(inTime);
+    const end = outTime ? dayjs.utc(outTime) : dayjs.utc();
+    if (!start.isValid() || !end.isValid()) return 0;
+    return end.diff(start, "hour");
+  };
 
   useEffect(() => {
     vehicles.forEach((v) => {
@@ -159,7 +155,6 @@ export default function DashboardPage() {
     });
   }, [vehicles]);
 
-  // Filtering
   const filterVehicles = (status) => {
     return vehicles.filter((v) => {
       const matchesStatus = v.status === status;
@@ -177,7 +172,6 @@ export default function DashboardPage() {
   const insideVehicles = filterVehicles("inside");
   const exitedVehicles = filterVehicles("exited");
 
-  // KPIs
   const totalInside = vehicles.filter((v) => v.status === "inside").length;
   const today = dayjs().startOf("day");
   const enteredToday = vehicles.filter((v) => dayjs(v.inTime).isAfter(today)).length;
@@ -195,88 +189,90 @@ export default function DashboardPage() {
       ? Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0][0]
       : "N/A";
 
-  // Table columns
   const columns = [
-    { 
-      title: "Vehicle No", 
+    {
+      title: "Vehicle No",
       dataIndex: "vehicleNo",
       render: (text) => (
         <Space>
-          <Avatar size="small" style={{ backgroundColor: '#1890ff' }}>
+          <Avatar size="small" style={{ backgroundColor: "#1890ff" }}>
             {text?.charAt(0)}
           </Avatar>
           <Text strong>{text}</Text>
         </Space>
-      )
+      ),
     },
-    { 
-      title: "Container ID", 
-      dataIndex: "containerId", 
-      render: (t) => t ? <Text code>{t}</Text> : <Text type="secondary">–</Text>
+    {
+      title: "Container ID",
+      dataIndex: "containerId",
+      render: (t) => (t ? <Text code>{t}</Text> : <Text type="secondary">–</Text>),
     },
-    { 
-      title: "Type", 
+    {
+      title: "Type",
       dataIndex: "type",
       render: (type) => (
-        <Tag color={
-          type === 'Car' ? 'blue' :
-          type === 'Truck' ? 'orange' :
-          type === 'Container Truck' ? 'purple' :
-          type === 'Lorry' ? 'green' :
-          type === 'Van' ? 'cyan' : 'default'
-        }>
+        <Tag
+          color={
+            type === "Car"
+              ? "blue"
+              : type === "Truck"
+              ? "orange"
+              : type === "Container Truck"
+              ? "purple"
+              : type === "Lorry"
+              ? "green"
+              : type === "Van"
+              ? "cyan"
+              : "default"
+          }
+        >
           {type}
         </Tag>
-      )
+      ),
     },
     {
       title: "Plant",
       dataIndex: "plant",
       render: (plant) =>
         plant ? (
-          <Tag 
-            color={plant === "Badalgama" ? "geekblue" : "volcano"}
-            style={{ fontWeight: 'bold' }}
-          >
-            {plant}
+          <Tag color={plant === "Badalgama" ? "geekblue" : "volcano"}>{plant}</Tag>
+        ) : (
+          <Text type="secondary">–</Text>
+        ),
+    },
+    {
+      title: "In Time",
+      dataIndex: "inTime",
+      sorter: (a, b) => new Date(a.inTime) - new Date(b.inTime),
+      defaultSortOrder: "descend",
+      render: (time) => (
+        <Space direction="vertical" size="small">
+          <Text>{dayjs.utc(time).tz("Asia/Colombo").format("MMM DD, YYYY")}</Text>
+          <Text type="secondary" style={{ fontSize: "12px" }}>
+            {dayjs.utc(time).tz("Asia/Colombo").format("HH:mm")}
+          </Text>
+        </Space>
+      ),
+    },
+    {
+      title: "Out Time",
+      dataIndex: "outTime",
+      render: (t, r) =>
+        t ? (
+          <Space direction="vertical" size="small">
+            <Text>{dayjs.utc(t).tz("Asia/Colombo").format("MMM DD, YYYY")}</Text>
+            <Text type="secondary" style={{ fontSize: "12px" }}>
+              {dayjs.utc(t).tz("Asia/Colombo").format("HH:mm")}
+            </Text>
+          </Space>
+        ) : r.status === "inside" ? (
+          <Tag color="processing" icon={<ClockCircleOutlined />}>
+            Inside
           </Tag>
         ) : (
           <Text type="secondary">–</Text>
         ),
     },
-   {
-  title: "In Time",
-  dataIndex: "inTime",
-  sorter: (a, b) => new Date(a.inTime) - new Date(b.inTime),
-  defaultSortOrder: "descend",
-  render: (time) => (
-    <Space direction="vertical" size="small">
-      {/* ✅ Parse as UTC, then convert to Sri Lanka local */}
-      <Text>{dayjs.utc(time).tz("Asia/Colombo").format("MMM DD, YYYY")}</Text>
-      <Text type="secondary" style={{ fontSize: "12px" }}>
-        {dayjs.utc(time).tz("Asia/Colombo").format("HH:mm")}
-      </Text>
-    </Space>
-  ),
-},
-{
-  title: "Out Time",
-  dataIndex: "outTime",
-  render: (t, r) =>
-    t ? (
-      <Space direction="vertical" size="small">
-        <Text>{dayjs.utc(t).tz("Asia/Colombo").format("MMM DD, YYYY")}</Text>
-        <Text type="secondary" style={{ fontSize: "12px" }}>
-          {dayjs.utc(t).tz("Asia/Colombo").format("HH:mm")}
-        </Text>
-      </Space>
-    ) : r.status === "inside" ? (
-      <Tag color="processing" icon={<ClockCircleOutlined />}>Inside</Tag>
-    ) : (
-      <Text type="secondary">–</Text>
-    ),
-},
-
     {
       title: "Duration",
       render: (_, record) => {
@@ -296,9 +292,11 @@ export default function DashboardPage() {
     {
       title: "Status",
       render: (_, r) =>
-        r.status === "inside" ? 
-        <Tag color="success">Inside</Tag> : 
-        <Tag color="default">Exited</Tag>,
+        r.status === "inside" ? (
+          <Tag color="success">Inside</Tag>
+        ) : (
+          <Tag color="default">Exited</Tag>
+        ),
     },
     {
       title: "Actions",
@@ -309,19 +307,19 @@ export default function DashboardPage() {
             size="small"
             icon={<DownloadOutlined />}
             onClick={() => exportVehiclePDF(r)}
-            style={{ 
-              backgroundColor: "#52c41a", 
+            style={{
+              backgroundColor: "#52c41a",
               borderColor: "#52c41a",
-              borderRadius: '6px'
+              borderRadius: "6px",
             }}
           >
             PDF
           </Button>
-          <Button 
+          <Button
             size="small"
             icon={<PrinterOutlined />}
             onClick={() => printVehicle(r)}
-            style={{ borderRadius: '6px' }}
+            style={{ borderRadius: "6px" }}
           >
             Print
           </Button>
@@ -332,7 +330,7 @@ export default function DashboardPage() {
               danger
               icon={<LogoutOutlined />}
               onClick={() => handleExit(r.id)}
-              style={{ borderRadius: '6px' }}
+              style={{ borderRadius: "6px" }}
             >
               Exit
             </Button>
@@ -343,252 +341,124 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div style={{ 
-      padding: '24px', 
-      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)', 
-      minHeight: "100vh" 
-    }}>
-      {/* Header Section */}
-      <div style={{ marginBottom: '32px', textAlign: 'center' }}>
-        <Title level={2} style={{ 
-          color: '#2c3e50', 
-          marginBottom: '8px',
-          fontWeight: '700',
-          fontSize: '32px'
-        }}>
-          <DashboardOutlined style={{ marginRight: '12px' }} />
+    <div
+      style={{
+        padding: "16px",
+        background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
+        minHeight: "100vh",
+      }}
+    >
+      {/* Header */}
+      <div style={{ marginBottom: "24px", textAlign: "center" }}>
+        <Title
+          level={2}
+          style={{
+            color: "#2c3e50",
+            marginBottom: "8px",
+            fontWeight: "700",
+            fontSize: "clamp(20px, 5vw, 32px)",
+          }}
+        >
+          <DashboardOutlined style={{ marginRight: "12px" }} />
           Vehicle Management Dashboard
         </Title>
-        <Text type="secondary" style={{ fontSize: '16px' }}>
+        <Text type="secondary" style={{ fontSize: "clamp(12px, 3vw, 16px)" }}>
           Real-time vehicle tracking and management system
         </Text>
       </div>
 
-      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+      <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
         {/* KPI Cards */}
-        <Row gutter={[24, 24]} style={{ marginBottom: '32px' }}>
+        <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
+          {/* Each KPI card keeps your gradient styles */}
           <Col xs={24} sm={12} lg={6}>
-            <Card 
-              bordered={false}
-              style={{ 
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #7CB342 0%, #8BC34A 100%)',
-                color: 'white',
-                boxShadow: '0 8px 32px rgba(124, 179, 66, 0.3)'
-              }}
-            >
-              <Statistic 
-                title={<span style={{ color: 'rgba(255,255,255,0.8)' }}>Vehicles Inside</span>}
-                value={totalInside} 
-                prefix={<CarOutlined style={{ color: 'white' }} />} 
-                valueStyle={{ color: 'white', fontSize: '28px', fontWeight: 'bold' }} 
-              />
+            <Card bordered={false} style={{ borderRadius: "12px", background: "linear-gradient(135deg, #7CB342 0%, #8BC34A 100%)" }}>
+              <Statistic title={<span style={{ color: "rgba(255,255,255,0.8)" }}>Vehicles Inside</span>} value={totalInside} prefix={<CarOutlined style={{ color: "white" }} />} valueStyle={{ color: "white", fontSize: "24px" }} />
             </Card>
           </Col>
           <Col xs={24} sm={12} lg={6}>
-            <Card 
-              bordered={false}
-              style={{ 
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                color: 'white',
-                boxShadow: '0 8px 32px rgba(240, 147, 251, 0.3)'
-              }}
-            >
-              <Statistic 
-                title={<span style={{ color: 'rgba(255,255,255,0.8)' }}>Entered Today</span>}
-                value={enteredToday} 
-                prefix={<CalendarOutlined style={{ color: 'white' }} />} 
-                valueStyle={{ color: 'white', fontSize: '28px', fontWeight: 'bold' }} 
-              />
+            <Card bordered={false} style={{ borderRadius: "12px", background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" }}>
+              <Statistic title={<span style={{ color: "rgba(255,255,255,0.8)" }}>Entered Today</span>} value={enteredToday} prefix={<CalendarOutlined style={{ color: "white" }} />} valueStyle={{ color: "white", fontSize: "24px" }} />
             </Card>
           </Col>
           <Col xs={24} sm={12} lg={6}>
-            <Card 
-              bordered={false}
-              style={{ 
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                color: 'white',
-                boxShadow: '0 8px 32px rgba(79, 172, 254, 0.3)'
-              }}
-            >
-              <Statistic 
-                title={<span style={{ color: 'rgba(255,255,255,0.8)' }}>Avg Duration</span>}
-                value={`${avgDuration} min`} 
-                prefix={<ClockCircleOutlined style={{ color: 'white' }} />} 
-                valueStyle={{ color: 'white', fontSize: '28px', fontWeight: 'bold' }} 
-              />
+            <Card bordered={false} style={{ borderRadius: "12px", background: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)" }}>
+              <Statistic title={<span style={{ color: "rgba(255,255,255,0.8)" }}>Avg Duration</span>} value={`${avgDuration} min`} prefix={<ClockCircleOutlined style={{ color: "white" }} />} valueStyle={{ color: "white", fontSize: "24px" }} />
             </Card>
           </Col>
           <Col xs={24} sm={12} lg={6}>
-            <Card 
-              bordered={false}
-              style={{ 
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-                color: 'white',
-                boxShadow: '0 8px 32px rgba(250, 112, 154, 0.3)'
-              }}
-            >
-              <Statistic 
-                title={<span style={{ color: 'rgba(255,255,255,0.8)' }}>Most Common</span>}
-                value={mostCommonType} 
-                prefix={<BarsOutlined style={{ color: 'white' }} />} 
-                valueStyle={{ color: 'white', fontSize: '20px', fontWeight: 'bold' }} 
-              />
+            <Card bordered={false} style={{ borderRadius: "12px", background: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)" }}>
+              <Statistic title={<span style={{ color: "rgba(255,255,255,0.8)" }}>Most Common</span>} value={mostCommonType} prefix={<BarsOutlined style={{ color: "white" }} />} valueStyle={{ color: "white", fontSize: "20px" }} />
             </Card>
           </Col>
         </Row>
 
-        {/* Main Content Card */}
-        <Card
-          style={{
-            borderRadius: '16px',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-            border: 'none'
-          }}
-          bodyStyle={{ padding: '32px' }}
-        >
-          {/* Filters Section */}
-          <div style={{ 
-            background: '#fafafa', 
-            padding: '24px', 
-            borderRadius: '12px', 
-            marginBottom: '24px' 
-          }}>
-            <Title level={4} style={{ 
-              marginBottom: '16px', 
-              color: '#2c3e50',
-              display: 'flex',
-              alignItems: 'center'
-            }}>
-              <FilterOutlined style={{ marginRight: '8px' }} />
-              Filters & Search
-            </Title>
-            
-            <Row gutter={[16, 16]}>
-              <Col xs={24} sm={12} md={6}>
-                <Input
-                  placeholder="Search by Vehicle No"
-                  prefix={<SearchOutlined />}
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  style={{ borderRadius: '8px' }}
-                />
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Select
-                  placeholder="Filter by Type"
-                  allowClear
-                  style={{ width: '100%' }}
-                  onChange={(val) => setFilterType(val)}
-                >
-                  <Select.Option value="Car">Car</Select.Option>
-                  <Select.Option value="Truck">Truck</Select.Option>
-                  <Select.Option value="Container Truck">Container Truck</Select.Option>
-                  <Select.Option value="Lorry">Lorry</Select.Option>
-                  <Select.Option value="Van">Van</Select.Option>
-                  <Select.Option value="Other">Other</Select.Option>
-                </Select>
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Select
-                  placeholder="Filter by Plant"
-                  allowClear
-                  style={{ width: '100%' }}
-                  onChange={(val) => setFilterPlant(val)}
-                >
-                  <Select.Option value="Badalgama">Badalgama</Select.Option>
-                  <Select.Option value="Madampe">Madampe</Select.Option>
-                </Select>
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <RangePicker
-                  style={{ width: '100%' }}
-                  onChange={(val) => setFilterDate(val)}
-                />
-              </Col>
-            </Row>
-          </div>
-
-          {/* Data Tables */}
-          <Tabs
-            defaultActiveKey="inside"
-            size="large"
-            style={{
-              '& .ant-tabs-nav': {
-                marginBottom: '24px'
-              }
-            }}
-            items={[
-              {
-                key: "inside",
-                label: (
-                  <span style={{ fontSize: '16px', fontWeight: '600' }}>
-                    🚗 Inside Vehicles ({insideVehicles.length})
-                  </span>
-                ),
-                children: (
-                  <Table
-                    loading={loading}
-                    dataSource={insideVehicles}
-                    rowKey="id"
-                    pagination={{ 
-                      pageSize: 10, 
-                      showSizeChanger: true,
-                      showQuickJumper: true,
-                      showTotal: (total, range) => 
-                        `${range[0]}-${range[1]} of ${total} vehicles`
-                    }}
-                    bordered={false}
-                    columns={columns}
-                    scroll={{ x: 1200 }}
-                    style={{
-                      '& .ant-table-thead > tr > th': {
-                        background: '#f8f9fa',
-                        fontWeight: '600',
-                        color: '#2c3e50'
-                      }
-                    }}
-                  />
-                ),
-              },
-              {
-                key: "exited",
-                label: (
-                  <span style={{ fontSize: '16px', fontWeight: '600' }}>
-                    📤 Exited Vehicles ({exitedVehicles.length})
-                  </span>
-                ),
-                children: (
-                  <Table
-                    loading={loading}
-                    dataSource={exitedVehicles}
-                    rowKey="id"
-                    pagination={{ 
-                      pageSize: 10, 
-                      showSizeChanger: true,
-                      showQuickJumper: true,
-                      showTotal: (total, range) => 
-                        `${range[0]}-${range[1]} of ${total} vehicles`
-                    }}
-                    bordered={false}
-                    columns={columns}
-                    scroll={{ x: 1200 }}
-                    style={{
-                      '& .ant-table-thead > tr > th': {
-                        background: '#f8f9fa',
-                        fontWeight: '600',
-                        color: '#2c3e50'
-                      }
-                    }}
-                  />
-                ),
-              },
-            ]}
-          />
+        {/* Filters */}
+        <Card style={{ marginBottom: "24px", borderRadius: "12px" }}>
+          <Title level={4} style={{ marginBottom: "16px" }}>
+            <FilterOutlined style={{ marginRight: "8px" }} />
+            Filters & Search
+          </Title>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} md={6}>
+              <Input placeholder="Search by Vehicle No" prefix={<SearchOutlined />} value={searchText} onChange={(e) => setSearchText(e.target.value)} />
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Select placeholder="Filter by Type" allowClear style={{ width: "100%" }} onChange={(val) => setFilterType(val)}>
+                <Select.Option value="Car">Car</Select.Option>
+                <Select.Option value="Truck">Truck</Select.Option>
+                <Select.Option value="Container Truck">Container Truck</Select.Option>
+                <Select.Option value="Lorry">Lorry</Select.Option>
+                <Select.Option value="Van">Van</Select.Option>
+                <Select.Option value="Other">Other</Select.Option>
+              </Select>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Select placeholder="Filter by Plant" allowClear style={{ width: "100%" }} onChange={(val) => setFilterPlant(val)}>
+                <Select.Option value="Badalgama">Badalgama</Select.Option>
+                <Select.Option value="Madampe">Madampe</Select.Option>
+              </Select>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <RangePicker style={{ width: "100%" }} onChange={(val) => setFilterDate(val)} />
+            </Col>
+          </Row>
         </Card>
+
+        {/* Tables */}
+        <Tabs
+          defaultActiveKey="inside"
+          items={[
+            {
+              key: "inside",
+              label: `🚗 Inside Vehicles (${insideVehicles.length})`,
+              children: (
+                <Table
+                  loading={loading}
+                  dataSource={insideVehicles}
+                  rowKey="id"
+                  pagination={{ pageSize: 8, responsive: true }}
+                  columns={columns}
+                  scroll={{ x: "max-content" }} // ✅ mobile horizontal scroll
+                />
+              ),
+            },
+            {
+              key: "exited",
+              label: `📤 Exited Vehicles (${exitedVehicles.length})`,
+              children: (
+                <Table
+                  loading={loading}
+                  dataSource={exitedVehicles}
+                  rowKey="id"
+                  pagination={{ pageSize: 8, responsive: true }}
+                  columns={columns}
+                  scroll={{ x: "max-content" }}
+                />
+              ),
+            },
+          ]}
+        />
       </div>
     </div>
   );
