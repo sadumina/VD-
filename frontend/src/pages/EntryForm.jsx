@@ -45,6 +45,13 @@ export default function EntryFormPage() {
     return "Car";
   };
 
+  const plateRegexes = [
+  /\b([A-Z]{1,3}\s?[A-Z]{0,3}\s?\d{3,5})\b/,
+  /\b(\d{2,4}[A-Z]{1,3})\b/,
+  /\b([A-Z0-9]{6,8})\b/
+];
+
+ const containerRegex = /\b([A-Z]{4}\s?\d{6,7}\s?\d)\b/;
   const handleSubmit = async (values) => {
     setLoading(true);
     try {
@@ -76,41 +83,62 @@ const captureAndRecognize = async () => {
 
   try {
     const result = await Tesseract.recognize(imageSrc, "eng");
-    let text = result.data.text.toUpperCase().replace(/\s+/g, " ").trim();
+    let text = result.data.text.toUpperCase();
 
-    // Fix common OCR mistakes
-    text = text.replace(/O/g, "0").replace(/I/g, "1");
+    // Clean OCR text
+    let cleanText = text
+      .replace(/O/g, "0")
+      .replace(/I/g, "1")
+      .replace(/S/g, "5")
+      .replace(/[^A-Z0-9]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
 
-    // Regex patterns
-    const plateRegex = /\b([A-Z]{1,3}[- ]?[A-Z]{0,2}[- ]?\d{3,4})\b/; 
-    const containerRegex = /\b([A-Z]{4}\s?\d{6,7}\s?\d)\b/;
+    console.log("OCR raw:", text);
+    console.log("OCR cleaned:", cleanText);
 
-    const plateMatch = text.match(plateRegex);
-    const containerMatch = text.match(containerRegex);
+    let plate = null;
+    let containerId = null;
 
-    if (plateMatch) {
-      const plate = plateMatch[0].replace(/\s+/g, "").replace("-", "");
-      form.setFieldsValue({ vehicleNo: plate });
-      message.success(`📸 Plate detected: ${plate}`);
+    // Try all plate regexes
+    for (const regex of plateRegexes) {
+      const match = cleanText.match(regex);
+      if (match) {
+        plate = match[0].replace(/\s+/g, "");
+        break;
+      }
     }
 
+    // Try container regex
+    const containerMatch = cleanText.match(containerRegex);
     if (containerMatch) {
-      const containerId = containerMatch[0].replace(/\s+/g, "");
+      containerId = containerMatch[0].replace(/\s+/g, "");
+    }
+
+    if (plate) {
+      form.setFieldsValue({ vehicleNo: plate });
+      message.success(`📸 Vehicle plate detected: ${plate}`);
+    }
+
+    if (containerId) {
       form.setFieldsValue({ containerId });
-      message.success(`📦 Container detected: ${containerId}`);
+      message.success(`📦 Container ID detected: ${containerId}`);
     }
 
-    if (!plateMatch && !containerMatch) {
+    if (!plate && !containerId) {
       message.warning("❌ No valid plate or container detected, try again.");
+    } else {
+      setScanning(false);
     }
 
-    setScanning(false);
   } catch (err) {
     message.error("⚠ OCR failed: " + err.message);
   } finally {
     setOcrLoading(false);
   }
 };
+
+
 
 
   return (
