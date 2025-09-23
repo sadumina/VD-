@@ -65,35 +65,53 @@ export default function EntryFormPage() {
   };
 
   // 📸 Capture + OCR
-  const captureAndRecognize = async () => {
-    const imageSrc = webcamRef.current.getScreenshot();
-    if (!imageSrc) {
-      message.error("⚠ Could not capture image");
-      return;
+  
+const captureAndRecognize = async () => {
+  const imageSrc = webcamRef.current.getScreenshot();
+  if (!imageSrc) {
+    message.error("⚠ Could not capture image");
+    return;
+  }
+  setOcrLoading(true);
+
+  try {
+    const result = await Tesseract.recognize(imageSrc, "eng");
+    let text = result.data.text.toUpperCase().replace(/\s+/g, " ").trim();
+
+    // Fix common OCR mistakes
+    text = text.replace(/O/g, "0").replace(/I/g, "1");
+
+    // Regex patterns
+    const plateRegex = /\b([A-Z]{1,3}[- ]?[A-Z]{0,2}[- ]?\d{3,4})\b/; 
+    const containerRegex = /\b([A-Z]{4}\s?\d{6,7}\s?\d)\b/;
+
+    const plateMatch = text.match(plateRegex);
+    const containerMatch = text.match(containerRegex);
+
+    if (plateMatch) {
+      const plate = plateMatch[0].replace(/\s+/g, "").replace("-", "");
+      form.setFieldsValue({ vehicleNo: plate });
+      message.success(`📸 Plate detected: ${plate}`);
     }
-    setOcrLoading(true);
 
-    try {
-      const result = await Tesseract.recognize(imageSrc, "eng");
-      const text = result.data.text.toUpperCase().replace(/\s+/g, " ").trim();
-
-      const plateRegex = /\b([A-Z]{1,3}[- ]?[A-Z]{0,2}[- ]?\d{3,4})\b/;
-      const match = text.match(plateRegex);
-
-      if (match) {
-        const plate = match[0].replace(/\s+/g, "").replace("-", "");
-        form.setFieldsValue({ vehicleNo: plate });
-        message.success(`📸 Plate detected: ${plate}`);
-        setScanning(false);
-      } else {
-        message.warning("❌ No valid plate detected, try again.");
-      }
-    } catch (err) {
-      message.error("⚠ OCR failed: " + err.message);
-    } finally {
-      setOcrLoading(false);
+    if (containerMatch) {
+      const containerId = containerMatch[0].replace(/\s+/g, "");
+      form.setFieldsValue({ containerId });
+      message.success(`📦 Container detected: ${containerId}`);
     }
-  };
+
+    if (!plateMatch && !containerMatch) {
+      message.warning("❌ No valid plate or container detected, try again.");
+    }
+
+    setScanning(false);
+  } catch (err) {
+    message.error("⚠ OCR failed: " + err.message);
+  } finally {
+    setOcrLoading(false);
+  }
+};
+
 
   return (
     <div
@@ -151,12 +169,18 @@ export default function EntryFormPage() {
             </Form.Item>
 
             {/* Container ID */}
-            <Form.Item name="containerId" label="Container ID (Optional)">
-              <Input
-                placeholder="e.g. CMAU 765432 1"
-                prefix={<ContainerOutlined style={{ color: "#667eea" }} />}
+            {/* Container ID */}
+            <Form.Item
+                name="containerId"
+                label="Container ID"
+                rules={[{ required: true, message: "Please enter container ID" }]}
+            >
+           <Input
+             placeholder="e.g. CMAU 765432 1"
+            prefix={<ContainerOutlined style={{ color: "#667eea" }} />}
               />
-            </Form.Item>
+          </Form.Item>
+
 
             {/* Plant */}
             <Form.Item
