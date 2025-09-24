@@ -10,11 +10,17 @@ export const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
-// Get all vehicles
+// ✅ Vehicles API
 export const fetchVehicles = () => api.get("/vehicles");
-
-// Create vehicle
 export const createVehicle = (data) => api.post("/vehicles", data);
-
-// Mark vehicle as exited
 export const markExit = (id) => api.put(`/vehicles/${id}/exit`);
+
+// ✅ OCR Upload API
+export const uploadOCR = (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return api.post("/ocr/", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};

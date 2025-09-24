@@ -7,6 +7,7 @@ import {
   Typography,
   message,
   Select,
+  Upload,
 } from "antd";
 import {
   CarOutlined,
@@ -14,15 +15,17 @@ import {
   CheckCircleOutlined,
   ArrowRightOutlined,
   FormOutlined,
+  UploadOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import { createVehicle } from "../services/api";
+import { createVehicle, uploadOCR } from "../services/api";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
 export default function EntryFormPage() {
   const [loading, setLoading] = useState(false);
+  const [ocrLoading, setOcrLoading] = useState(false); // OCR button loader
   const [form] = Form.useForm();
   const navigate = useNavigate();
 
@@ -35,6 +38,26 @@ export default function EntryFormPage() {
     if (p.startsWith("T")) return "Truck";
     if (p.startsWith("V")) return "Van";
     return "Car";
+  };
+
+  // ✅ OCR Handler
+  const handleOCR = async ({ file }) => {
+    try {
+      setOcrLoading(true);
+      const res = await uploadOCR(file);
+      if (res.data.text) {
+  const detectedPlate = res.data.text;  // already a full string from backend
+  form.setFieldsValue({ vehicleNo: detectedPlate });
+  message.success(`✅ Plate detected: ${detectedPlate}`);
+} else {
+  message.warning("⚠️ No text detected from image.");
+}
+
+    } catch (err) {
+      message.error("❌ OCR failed: " + err.message);
+    } finally {
+      setOcrLoading(false);
+    }
   };
 
   // ✅ Form submit
@@ -58,7 +81,7 @@ export default function EntryFormPage() {
     }
   };
 
-  // ✅ Plant options (easier to expand later)
+  // ✅ Plant options
   const plantOptions = [
     { value: "Badalgama", label: "Badalgama Plant" },
     { value: "Madampe", label: "Madampe Plant" },
@@ -109,6 +132,22 @@ export default function EntryFormPage() {
                 placeholder="e.g. WP-KL 4455"
                 prefix={<CarOutlined style={{ color: "#667eea" }} />}
               />
+            </Form.Item>
+
+            {/* OCR Upload */}
+            <Form.Item label="Upload Plate Image">
+              <Upload customRequest={handleOCR} showUploadList={false}>
+                <Button
+                  icon={<UploadOutlined />}
+                  loading={ocrLoading}
+                  style={{
+                    borderRadius: "8px",
+                    marginBottom: "12px",
+                  }}
+                >
+                  Upload & Detect Number Plate
+                </Button>
+              </Upload>
             </Form.Item>
 
             {/* Container ID */}
