@@ -1,5 +1,9 @@
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
-motor==3.4.0
-pymongo==4.6.3
-python-dotenv==1.0.1
+fastapi
+uvicorn
+motor
+pymongo
+python-multipart
+pillow
+numpy
+opencv-python-headless
+easyocr
