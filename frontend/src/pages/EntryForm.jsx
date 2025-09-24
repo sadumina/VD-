@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import {
   Form,
   Input,
@@ -7,34 +7,30 @@ import {
   Typography,
   message,
   Select,
-  Row,
-  Col,
-  Modal,
+  Upload,
   Spin,
 } from "antd";
-import { useNavigate } from "react-router-dom";
-import { createVehicle } from "../services/api";
 import {
   CarOutlined,
   ContainerOutlined,
-  CameraOutlined,
   CheckCircleOutlined,
   ArrowRightOutlined,
   FormOutlined,
+  CameraOutlined,
 } from "@ant-design/icons";
-import Webcam from "react-webcam";
-import Tesseract from "tesseract.js";
+import { useNavigate } from "react-router-dom";
+import { createVehicle } from "../services/api";
 
 const { Title, Text } = Typography;
 
 export default function EntryFormPage() {
   const [loading, setLoading] = useState(false);
-  const [scanning, setScanning] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
+  const [preview, setPreview] = useState(null);
   const [form] = Form.useForm();
-  const webcamRef = useRef(null);
   const navigate = useNavigate();
 
+  // ✅ Auto detect type
   const detectVehicleType = (plate, containerId) => {
     if (containerId && containerId.trim() !== "") return "Container Truck";
     if (!plate) return "Unknown";
@@ -45,13 +41,51 @@ export default function EntryFormPage() {
     return "Car";
   };
 
-  const plateRegexes = [
-  /\b([A-Z]{1,3}\s?[A-Z]{0,3}\s?\d{3,5})\b/,
-  /\b(\d{2,4}[A-Z]{1,3})\b/,
-  /\b([A-Z0-9]{6,8})\b/
-];
+  // ✅ Upload & OCR
+  const handleOCR = async (file) => {
+    setOcrLoading(true);
 
- const containerRegex = /\b([A-Z]{4}\s?\d{6,7}\s?\d)\b/;
+    // Save preview for user
+    const reader = new FileReader();
+    reader.onload = (e) => setPreview(e.target.result);
+    reader.readAsDataURL(file);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("http://localhost:8000/api/ocr", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      console.log("📡 OCR Response:", data);
+
+      if (data.vehicleNo) {
+        form.setFieldsValue({ vehicleNo: data.vehicleNo });
+        message.success(`✅ Plate detected: ${data.vehicleNo}`);
+      }
+      if (data.containerId) {
+        form.setFieldsValue({ containerId: data.containerId });
+        message.success(`📦 Container detected: ${data.containerId}`);
+      }
+
+      if (!data.vehicleNo && !data.containerId) {
+        message.warning(
+          `⚠️ OCR found: ${data.raw || "No valid plate/container detected. Enter manually."}`
+        );
+      }
+    } catch (err) {
+      message.error("❌ OCR failed: " + err.message);
+    } finally {
+      setOcrLoading(false);
+    }
+
+    return false; // prevent default upload
+  };
+
+  // ✅ Submit form
   const handleSubmit = async (values) => {
     setLoading(true);
     try {
@@ -65,81 +99,11 @@ export default function EntryFormPage() {
         navigate("/dashboard");
       }
     } catch {
-      message.error("⚠ Failed to add vehicle");
+      message.error("❌ Failed to add vehicle");
     } finally {
       setLoading(false);
     }
   };
-
-  // 📸 Capture + OCR
-  
-const captureAndRecognize = async () => {
-  const imageSrc = webcamRef.current.getScreenshot();
-  if (!imageSrc) {
-    message.error("⚠ Could not capture image");
-    return;
-  }
-  setOcrLoading(true);
-
-  try {
-    const result = await Tesseract.recognize(imageSrc, "eng");
-    let text = result.data.text.toUpperCase();
-
-    // Clean OCR text
-    let cleanText = text
-      .replace(/O/g, "0")
-      .replace(/I/g, "1")
-      .replace(/S/g, "5")
-      .replace(/[^A-Z0-9]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    console.log("OCR raw:", text);
-    console.log("OCR cleaned:", cleanText);
-
-    let plate = null;
-    let containerId = null;
-
-    // Try all plate regexes
-    for (const regex of plateRegexes) {
-      const match = cleanText.match(regex);
-      if (match) {
-        plate = match[0].replace(/\s+/g, "");
-        break;
-      }
-    }
-
-    // Try container regex
-    const containerMatch = cleanText.match(containerRegex);
-    if (containerMatch) {
-      containerId = containerMatch[0].replace(/\s+/g, "");
-    }
-
-    if (plate) {
-      form.setFieldsValue({ vehicleNo: plate });
-      message.success(`📸 Vehicle plate detected: ${plate}`);
-    }
-
-    if (containerId) {
-      form.setFieldsValue({ containerId });
-      message.success(`📦 Container ID detected: ${containerId}`);
-    }
-
-    if (!plate && !containerId) {
-      message.warning("❌ No valid plate or container detected, try again.");
-    } else {
-      setScanning(false);
-    }
-
-  } catch (err) {
-    message.error("⚠ OCR failed: " + err.message);
-  } finally {
-    setOcrLoading(false);
-  }
-};
-
-
-
 
   return (
     <div
@@ -175,6 +139,35 @@ const captureAndRecognize = async () => {
           </Title>
 
           <Form form={form} layout="vertical" onFinish={handleSubmit} size="large">
+            {/* Upload Photo */}
+            <Form.Item label="Upload Plate Photo">
+              <Upload
+                beforeUpload={handleOCR}
+                showUploadList={false}
+                accept="image/*"
+              >
+                <Button icon={<CameraOutlined />}>Upload / Capture</Button>
+              </Upload>
+              {ocrLoading && (
+                <Spin tip="Detecting plate..." style={{ marginTop: 8 }} />
+              )}
+              {preview && (
+                <div style={{ marginTop: 12, textAlign: "center" }}>
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "200px",
+                      borderRadius: "8px",
+                      border: "1px solid #ddd",
+                      padding: "4px",
+                    }}
+                  />
+                </div>
+              )}
+            </Form.Item>
+
             {/* Vehicle No */}
             <Form.Item
               name="vehicleNo"
@@ -184,31 +177,16 @@ const captureAndRecognize = async () => {
               <Input
                 placeholder="e.g. WP-KL 4455"
                 prefix={<CarOutlined style={{ color: "#667eea" }} />}
-                addonAfter={
-                  <Button
-                    type="link"
-                    icon={<CameraOutlined />}
-                    onClick={() => setScanning(true)}
-                  >
-                    Scan
-                  </Button>
-                }
               />
             </Form.Item>
 
             {/* Container ID */}
-            {/* Container ID */}
-            <Form.Item
-                name="containerId"
-                label="Container ID"
-                rules={[{ required: true, message: "Please enter container ID" }]}
-            >
-           <Input
-             placeholder="e.g. CMAU 765432 1"
-            prefix={<ContainerOutlined style={{ color: "#667eea" }} />}
+            <Form.Item name="containerId" label="Container ID">
+              <Input
+                placeholder="e.g. CMAU7654321"
+                prefix={<ContainerOutlined style={{ color: "#667eea" }} />}
               />
-          </Form.Item>
-
+            </Form.Item>
 
             {/* Plant */}
             <Form.Item
@@ -222,6 +200,7 @@ const captureAndRecognize = async () => {
               </Select>
             </Form.Item>
 
+            {/* Submit */}
             <Form.Item>
               <Button
                 type="primary"
@@ -241,31 +220,6 @@ const captureAndRecognize = async () => {
           </Form>
         </Card>
       </div>
-
-      {/* Camera Modal */}
-      <Modal
-        open={scanning}
-        onCancel={() => setScanning(false)}
-        footer={null}
-        title="📸 Scan Number Plate"
-      >
-        <Spin spinning={ocrLoading} tip="Detecting plate...">
-          <Webcam
-            ref={webcamRef}
-            screenshotFormat="image/png"
-            videoConstraints={{ facingMode: "environment" }}
-            style={{ width: "100%" }}
-          />
-          <Button
-            type="primary"
-            block
-            onClick={captureAndRecognize}
-            style={{ marginTop: 10 }}
-          >
-            Capture & Detect
-          </Button>
-        </Spin>
-      </Modal>
     </div>
   );
 }
