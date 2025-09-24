@@ -1,4 +1,6 @@
 import os
+import asyncio
+import logging
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 
@@ -13,8 +15,23 @@ if not MONGO_URL:
 if not DB_NAME:
     raise ValueError("❌ DB_NAME is missing. Please set it in .env or environment variables.")
 
+# Create async Mongo client
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
 
 def get_collection(name: str):
     return db[name]
+
+# ✅ Test function to verify connection
+async def test_connection():
+    try:
+        result = await db.command("ping")
+        logging.info("✅ MongoDB connection successful:", result)
+        print("✅ MongoDB connection successful:", result)
+    except Exception as e:
+        logging.error(f"❌ MongoDB connection failed: {e}")
+        print(f"❌ MongoDB connection failed: {e}")
+
+# Run test if executed directly
+if __name__ == "__main__":
+    asyncio.run(test_connection())

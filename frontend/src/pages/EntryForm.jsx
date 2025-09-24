@@ -7,8 +7,6 @@ import {
   Typography,
   message,
   Select,
-  Upload,
-  Spin,
 } from "antd";
 import {
   CarOutlined,
@@ -16,21 +14,19 @@ import {
   CheckCircleOutlined,
   ArrowRightOutlined,
   FormOutlined,
-  CameraOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { createVehicle } from "../services/api";
 
 const { Title, Text } = Typography;
+const { Option } = Select;
 
 export default function EntryFormPage() {
   const [loading, setLoading] = useState(false);
-  const [ocrLoading, setOcrLoading] = useState(false);
-  const [preview, setPreview] = useState(null);
   const [form] = Form.useForm();
   const navigate = useNavigate();
 
-  // ✅ Auto detect type
+  // ✅ Vehicle type detection
   const detectVehicleType = (plate, containerId) => {
     if (containerId && containerId.trim() !== "") return "Container Truck";
     if (!plate) return "Unknown";
@@ -41,51 +37,7 @@ export default function EntryFormPage() {
     return "Car";
   };
 
-  // ✅ Upload & OCR
-  const handleOCR = async (file) => {
-    setOcrLoading(true);
-
-    // Save preview for user
-    const reader = new FileReader();
-    reader.onload = (e) => setPreview(e.target.result);
-    reader.readAsDataURL(file);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("http://localhost:8000/api/ocr", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      console.log("📡 OCR Response:", data);
-
-      if (data.vehicleNo) {
-        form.setFieldsValue({ vehicleNo: data.vehicleNo });
-        message.success(`✅ Plate detected: ${data.vehicleNo}`);
-      }
-      if (data.containerId) {
-        form.setFieldsValue({ containerId: data.containerId });
-        message.success(`📦 Container detected: ${data.containerId}`);
-      }
-
-      if (!data.vehicleNo && !data.containerId) {
-        message.warning(
-          `⚠️ OCR found: ${data.raw || "No valid plate/container detected. Enter manually."}`
-        );
-      }
-    } catch (err) {
-      message.error("❌ OCR failed: " + err.message);
-    } finally {
-      setOcrLoading(false);
-    }
-
-    return false; // prevent default upload
-  };
-
-  // ✅ Submit form
+  // ✅ Form submit
   const handleSubmit = async (values) => {
     setLoading(true);
     try {
@@ -96,14 +48,21 @@ export default function EntryFormPage() {
         message.warning("⚠️ This vehicle is already inside.");
       } else {
         message.success("✅ Vehicle entered successfully!");
+        form.resetFields(); // clear inputs
         navigate("/dashboard");
       }
-    } catch {
-      message.error("❌ Failed to add vehicle");
+    } catch (err) {
+      message.error("❌ Failed to add vehicle: " + err.message);
     } finally {
       setLoading(false);
     }
   };
+
+  // ✅ Plant options (easier to expand later)
+  const plantOptions = [
+    { value: "Badalgama", label: "Badalgama Plant" },
+    { value: "Madampe", label: "Madampe Plant" },
+  ];
 
   return (
     <div
@@ -124,14 +83,15 @@ export default function EntryFormPage() {
         </Text>
       </div>
 
+      {/* Form Card */}
       <div style={{ maxWidth: "600px", margin: "0 auto" }}>
         <Card
           style={{
             borderRadius: "16px",
             boxShadow: "0 6px 20px rgba(0,0,0,0.08)",
-            border: "none",
           }}
-          bodyStyle={{ padding: "24px" }}
+          styles={{ body: { padding: "24px" } }}
+          variant="outlined"
         >
           <Title level={4} style={{ marginBottom: "16px", color: "#2c3e50" }}>
             <FormOutlined style={{ marginRight: "12px", color: "#667eea" }} />
@@ -139,35 +99,6 @@ export default function EntryFormPage() {
           </Title>
 
           <Form form={form} layout="vertical" onFinish={handleSubmit} size="large">
-            {/* Upload Photo */}
-            <Form.Item label="Upload Plate Photo">
-              <Upload
-                beforeUpload={handleOCR}
-                showUploadList={false}
-                accept="image/*"
-              >
-                <Button icon={<CameraOutlined />}>Upload / Capture</Button>
-              </Upload>
-              {ocrLoading && (
-                <Spin tip="Detecting plate..." style={{ marginTop: 8 }} />
-              )}
-              {preview && (
-                <div style={{ marginTop: 12, textAlign: "center" }}>
-                  <img
-                    src={preview}
-                    alt="Preview"
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "200px",
-                      borderRadius: "8px",
-                      border: "1px solid #ddd",
-                      padding: "4px",
-                    }}
-                  />
-                </div>
-              )}
-            </Form.Item>
-
             {/* Vehicle No */}
             <Form.Item
               name="vehicleNo"
@@ -188,19 +119,22 @@ export default function EntryFormPage() {
               />
             </Form.Item>
 
-            {/* Plant */}
+            {/* Plant Dropdown */}
             <Form.Item
               name="plant"
               label="Destination Plant"
               rules={[{ required: true, message: "Please select a plant" }]}
             >
               <Select placeholder="Choose destination plant" size="large">
-                <Select.Option value="Badalgama">Badalgama Plant</Select.Option>
-                <Select.Option value="Madampe">Madampe Plant</Select.Option>
+                {plantOptions.map((p) => (
+                  <Option key={p.value} value={p.value}>
+                    {p.label}
+                  </Option>
+                ))}
               </Select>
             </Form.Item>
 
-            {/* Submit */}
+            {/* Submit Button */}
             <Form.Item>
               <Button
                 type="primary"
