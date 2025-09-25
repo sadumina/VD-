@@ -8,8 +8,8 @@ numpy==1.26.4
 pillow==10.4.0
 opencv-python-headless==4.10.0.84
 
-# PyTorch stack (CPU wheels from official index)
+# PyTorch stack (CPU only, Render-friendly)
 torch==2.8.0
-torchvision==0.20.0
+torchvision==0.23.0
 torchaudio==2.8.0
 -f https://download.pytorch.org/whl/torch_stable.html
