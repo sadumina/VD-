@@ -9,9 +9,12 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Copy requirements first (for caching)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+# ✅ Install CPU-only PyTorch + deps (lighter & faster)
+RUN pip install --no-cache-dir -r requirements.txt \
+    && rm -rf /root/.cache/pip /tmp/*
 
 # Copy backend code
 COPY . .

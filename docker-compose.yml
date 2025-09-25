@@ -6,10 +6,8 @@ services:
     container_name: vd-backend
     ports:
       - "8000:8000"
-    volumes:
-      - ./backend:/app
-    environment:
-      - PYTHONUNBUFFERED=1
+    env_file:
+      - ./backend/.env
     restart: always
 
   frontend:
