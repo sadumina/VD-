@@ -1,6 +1,7 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from bson import ObjectId
 from datetime import datetime, timezone
 import motor.motor_asyncio
@@ -8,7 +9,7 @@ import os
 import logging
 from dotenv import load_dotenv
 
-# 🔹 OCR imports
+# OCR imports
 import easyocr
 import numpy as np
 from PIL import Image
@@ -32,12 +33,13 @@ if not MONGO_URL:
 # ============================================================
 app = FastAPI(title="Vehicle Detector API")
 
-# ✅ Explicit CORS origins
+# ✅ Fixed CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",   # React dev
+        "http://localhost:5173",  # React dev server
         "https://haycarb-vehicle-detector-frontend.vercel.app",  # Vercel prod
+        "*",  # TEMP: allow all (remove in prod)
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -56,29 +58,18 @@ def get_collection(name: str):
 # ============================================================
 # 🔠 OCR Setup
 # ============================================================
-reader = easyocr.Reader(['en'], gpu=False)  # CPU-based OCR
+reader = easyocr.Reader(['en'], gpu=False)
 
-# ✅ Helper function to fix common OCR mistakes
 def clean_plate_text(text: str) -> str:
     text = text.upper()
-    corrections = {
-        "O": "0",  # O → 0
-        "I": "1",  # I → 1
-        "S": "5",  # S → 5
-        "B": "8",  # B → 8
-    }
+    corrections = {"O": "0", "I": "1", "S": "5", "B": "8"}
     for wrong, right in corrections.items():
         text = text.replace(wrong, right)
     return text
 
-# ✅ Format Sri Lankan plate style
 def format_plate(detected: list) -> str:
-    """
-    Merge OCR chunks into a valid Sri Lankan plate format.
-    """
     plate = " ".join(detected).upper()
     plate = re.sub(r"\s+", " ", plate).strip()
-    plate = plate.replace("  ", " ").replace(" -", "-").replace("- ", "-")
     return plate
 
 # ============================================================
@@ -86,23 +77,17 @@ def format_plate(detected: list) -> str:
 # ============================================================
 @app.post("/api/ocr/")
 async def ocr_image(file: UploadFile = File(...)):
-    """
-    Accept an image upload and return detected Sri Lankan number plate text.
-    """
     try:
         img_bytes = await file.read()
         image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
         img_np = np.array(image)
 
-        # ✅ Preprocess: grayscale + resize + denoise
+        # Preprocess
         gray = cv2.cvtColor(img_np, cv2.COLOR_BGR2GRAY)
         gray = cv2.resize(gray, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
         gray = cv2.GaussianBlur(gray, (3, 3), 0)
-        _, thresh = cv2.threshold(
-            gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
-        )
+        _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-        # ✅ Run OCR
         results = reader.readtext(thresh, detail=1)
 
         detected = []
@@ -111,47 +96,21 @@ async def ocr_image(file: UploadFile = File(...)):
             if cleaned:
                 detected.append(clean_plate_text(cleaned))
 
-        # ✅ Format into full plate
         detected_plate = format_plate(detected)
-
         return {"status": "ok", "text": detected_plate}
     except Exception as e:
         logging.error(f"❌ OCR failed: {e}")
-        return JSONResponse(
-            status_code=500,
-            content={"status": "error", "message": f"OCR failed: {str(e)}"},
-        )
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 # ============================================================
-# 📡 Vehicle API Routes
+# 📡 Vehicle Endpoints
 # ============================================================
 
-@app.on_event("startup")
-async def startup_event():
-    """Ping DB on startup and log/print a success message."""
-    try:
-        await db.command("ping")
-        logging.info("✅ MongoDB connection established successfully 🚀")
-        print("✅ MongoDB connection established successfully 🚀")
-    except Exception as e:
-        logging.error(f"❌ MongoDB connection failed: {e}")
-        print(f"❌ MongoDB connection failed: {e}")
-    logging.info("🚀 Vehicle Detector API started successfully")
+class VehicleRequest(BaseModel):
+    vehicleNo: str
+    containerId: str | None = None
+    plant: str
 
-# ✅ Health check
-@app.get("/api/health")
-async def health_check():
-    try:
-        await db.command("ping")
-        return {
-            "status": "ok",
-            "message": "✅ Backend + Database connected successfully 🚀",
-            "database": DB_NAME,
-        }
-    except Exception as e:
-        return {"status": "error", "message": f"❌ DB connection failed: {e}"}
-
-# ✅ Get all vehicles
 @app.get("/api/vehicles")
 async def get_vehicles():
     try:
@@ -162,77 +121,43 @@ async def get_vehicles():
             del v["_id"]
         return vehicles
     except Exception as e:
-        logging.error(f"❌ Error in get_vehicles: {e}")
-        return JSONResponse(
-            status_code=500,
-            content={"status": "error", "message": str(e)},
-        )
+        logging.error(f"❌ Error fetching vehicles: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
 
-# ✅ Add vehicle entry
 @app.post("/api/vehicles")
-async def create_vehicle(data: dict):
+async def create_vehicle(data: VehicleRequest):
     try:
         collection = get_collection("vehicles")
 
-        existing = await collection.find_one(
-            {"vehicleNo": data.get("vehicleNo"), "status": "inside"}
-        )
-        if existing:
-            return {
-                "status": "duplicate",
-                "message": f"⚠️ Vehicle {data.get('vehicleNo')} already inside.",
-            }
-
-        now_utc = (
-            datetime.now(timezone.utc)
-            .replace(microsecond=0)
-            .isoformat()
-            .replace("+00:00", "Z")
-        )
+        now_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
         vehicle = {
-            "vehicleNo": data.get("vehicleNo"),
-            "containerId": data.get("containerId"),
-            "type": data.get("type", "Unknown"),
-            "plant": data.get("plant"),
+            "vehicleNo": data.vehicleNo,
+            "containerId": data.containerId,
+            "plant": data.plant,
             "inTime": now_utc,
             "outTime": None,
             "status": "inside",
         }
 
         result = await collection.insert_one(vehicle)
-        return {
-            "id": str(result.inserted_id),
-            "status": "ok",
-            "message": "✅ Vehicle added",
-        }
+        return {"id": str(result.inserted_id), "status": "ok", "message": "✅ Vehicle added"}
     except Exception as e:
-        logging.error(f"❌ Error in create_vehicle: {e}")
-        return JSONResponse(
-            status_code=500,
-            content={"status": "error", "message": str(e)},
-        )
+        logging.error(f"❌ Error creating vehicle: {e}")
+        raise HTTPException(status_code=500, detail="Database insert failed")
 
-# ✅ Mark exit
 @app.put("/api/vehicles/{id}/exit")
 async def mark_exit(id: str):
     try:
         collection = get_collection("vehicles")
-        now_utc = (
-            datetime.now(timezone.utc)
-            .replace(microsecond=0)
-            .isoformat()
-            .replace("+00:00", "Z")
-        )
+        now_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
-        await collection.update_one(
-            {"_id": ObjectId(id)},
-            {"$set": {"outTime": now_utc, "status": "exited"}},
+        result = await collection.update_one(
+            {"_id": ObjectId(id)}, {"$set": {"outTime": now_utc, "status": "exited"}}
         )
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Vehicle not found")
         return {"message": "✅ Vehicle marked as exited"}
     except Exception as e:
-        logging.error(f"❌ Error in mark_exit: {e}")
-        return JSONResponse(
-            status_code=500,
-            content={"status": "error", "message": str(e)},
-        )
+        logging.error(f"❌ Error marking exit: {e}")
+        raise HTTPException(status_code=500, detail="Database update failed")
