@@ -1,27 +1,20 @@
-# ----------------------
-# Backend Dockerfile
-# ----------------------
 FROM python:3.11-slim
 
-# Set working directory
 WORKDIR /app
 
-# Install system dependencies (if needed)
+# System dependencies for OpenCV + EasyOCR
 RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libglib2.0-0 \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency list
-COPY requirements.txt .
-
 # Install Python dependencies
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend source code
+# Copy backend code
 COPY . .
 
-# Expose FastAPI port
 EXPOSE 8000
-
-# Start FastAPI with uvicorn
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
