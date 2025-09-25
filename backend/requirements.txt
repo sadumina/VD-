@@ -1,13 +1,15 @@
-fastapi
-uvicorn[standard]
-motor
-pydantic
-python-dotenv
-easyocr
-numpy
-pillow
-opencv-python-headless
-torch==2.2.2
-torchvision==0.17.2
-torchaudio==2.2.2
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+motor==3.5.1
+pydantic[email]==2.9.2
+python-dotenv==1.0.1
+easyocr==1.7.1
+numpy==1.26.4
+pillow==10.4.0
+opencv-python-headless==4.10.0.84
+
+# PyTorch stack (CPU wheels from official index)
+torch==2.8.0
+torchvision==0.20.0
+torchaudio==2.8.0
 -f https://download.pytorch.org/whl/torch_stable.html
