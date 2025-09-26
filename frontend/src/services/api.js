@@ -1,39 +1,23 @@
 import axios from "axios";
 
-// ✅ Detect environment (Vite provides import.meta.env.MODE)
-const API_BASE_URL =
-  import.meta.env.MODE === "development"
-    ? "http://localhost:8000/api" // Local FastAPI backend
-    : "https://haycarb-vehicle-detector.onrender.com/api"; // Production backend (Render/Vercel)
+// Base API URL (from env or default local FastAPI backend)
+const API = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
-// ✅ Axios instance
-export const api = axios.create({
-  baseURL: API_BASE_URL,
-});
+// 🔹 Vehicle Endpoints
+export const fetchVehicles = () => axios.get(`${API}/vehicles`);
 
-// ============================================================
-// 🚗 Vehicle API
-// ============================================================
+export const createVehicle = (data) =>
+  axios.post(`${API}/vehicles`, data);
 
-// Get all vehicles
-export const fetchVehicles = () => api.get("/vehicles");
+export const markExit = (id) =>
+  axios.put(`${API}/vehicles/${id}/exit`);
 
-// Add vehicle entry
-export const createVehicle = (data) => api.post("/vehicles", data);
-
-// Mark vehicle exit
-export const markExit = (id) => api.put(`/vehicles/${id}/exit`);
-
-// ============================================================
-// 🔠 OCR API
-// ============================================================
-
-// Upload image for OCR
-export const uploadOCR = (file) => {
+// 🔹 OCR Upload (Mistral OCR through FastAPI)
+export const uploadOCR = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
 
-  return api.post("/ocr/", formData, {
+  return axios.post(`${API}/ocr/`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
 };

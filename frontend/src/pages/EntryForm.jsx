@@ -41,7 +41,7 @@ export default function EntryFormPage() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const webcamRef = useRef(null);
 
-  // ✅ OCR Handler
+  // ✅ OCR Handler (Upload)
   const handleOCR = async ({ file }) => {
     try {
       setOcrLoading(true);
@@ -59,7 +59,7 @@ export default function EntryFormPage() {
     }
   };
 
-  // ✅ Camera capture → OCR
+  // ✅ OCR Handler (Camera)
   const captureAndScan = async () => {
     const imageSrc = webcamRef.current.getScreenshot();
     if (!imageSrc) {
@@ -107,83 +107,94 @@ export default function EntryFormPage() {
   };
 
   return (
-    <div style={{ 
-      minHeight: "100vh", 
-      padding: "20px", 
-      background: "linear-gradient(135deg, #e8f5e8 0%, #a8e6a3 50%, #4caf50 100%)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center"
-    }}>
-      <Card style={{ 
-        maxWidth: "700px", 
-        width: "100%",
-        margin: "0 auto", 
-        borderRadius: "20px",
-        boxShadow: "0 25px 50px rgba(76, 175, 80, 0.3)",
-        border: "3px solid rgba(76, 175, 80, 0.2)",
-        overflow: "hidden",
-        background: "rgba(255, 255, 255, 0.95)",
-        backdropFilter: "blur(10px)"
-      }}>
-        <div style={{ 
-          textAlign: "center", 
-          marginBottom: "30px",
-          background: "linear-gradient(135deg, #2e7d32 0%, #4caf50 50%, #66bb6a 100%)",
-          color: "white",
-          padding: "35px 24px",
-          margin: "-24px -24px 30px -24px",
-          position: "relative"
-        }}>
-          <div style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs><pattern id=\"grid\" width=\"10\" height=\"10\" patternUnits=\"userSpaceOnUse\"><path d=\"M 10 0 L 0 0 0 10\" fill=\"none\" stroke=\"rgba(255,255,255,0.1)\" stroke-width=\"0.5\"/></pattern></defs><rect width=\"100\" height=\"100\" fill=\"url(%23grid)\"/></svg>')",
-            opacity: 0.3
-          }}></div>
-          <SafetyOutlined style={{ 
-            fontSize: "40px", 
-            marginBottom: "16px", 
-            display: "block",
-            color: "#e8f5e8",
-            filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.2))",
+    <div
+      style={{
+        minHeight: "100vh",
+        padding: "20px",
+        background:
+          "linear-gradient(135deg, #e8f5e8 0%, #a8e6a3 50%, #4caf50 100%)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Card
+        style={{
+          maxWidth: "700px",
+          width: "100%",
+          margin: "0 auto",
+          borderRadius: "20px",
+          boxShadow: "0 25px 50px rgba(76, 175, 80, 0.3)",
+          border: "3px solid rgba(76, 175, 80, 0.2)",
+          overflow: "hidden",
+          background: "rgba(255, 255, 255, 0.95)",
+          backdropFilter: "blur(10px)",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            textAlign: "center",
+            marginBottom: "30px",
+            background:
+              "linear-gradient(135deg, #2e7d32 0%, #4caf50 50%, #66bb6a 100%)",
+            color: "white",
+            padding: "35px 24px",
+            margin: "-24px -24px 30px -24px",
             position: "relative",
-            zIndex: 1
-          }} />
-          <Title level={2} style={{ 
-            color: "white", 
-            margin: "0 0 8px 0",
-            fontWeight: "700",
-            textShadow: "0 2px 4px rgba(0,0,0,0.3)",
-            position: "relative",
-            zIndex: 1
-          }}>
+          }}
+        >
+          <SafetyOutlined
+            style={{
+              fontSize: "40px",
+              marginBottom: "16px",
+              display: "block",
+              color: "#e8f5e8",
+              filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.2))",
+            }}
+          />
+          <Title
+            level={2}
+            style={{
+              color: "white",
+              margin: "0 0 8px 0",
+              fontWeight: "700",
+              textShadow: "0 2px 4px rgba(0,0,0,0.3)",
+            }}
+          >
             Vehicle Entry System
           </Title>
-          <Text style={{ 
-            color: "rgba(255, 255, 255, 0.9)", 
-            fontSize: "16px",
-            fontWeight: "400",
-            position: "relative",
-            zIndex: 1
-          }}>
+          <Text
+            style={{
+              color: "rgba(255, 255, 255, 0.9)",
+              fontSize: "16px",
+              fontWeight: "400",
+            }}
+          >
             Secure vehicle registration and tracking
           </Text>
         </div>
 
+        {/* Form */}
         <Form form={form} layout="vertical" onFinish={handleSubmit} size="large">
-          {/* Vehicle info */}
+          {/* Vehicle Number */}
           <Form.Item
             name="vehicleNo"
-            label={<span style={{ fontWeight: "600", color: "#2e7d32", fontSize: "16px" }}>Vehicle License Plate</span>}
+            label={
+              <span
+                style={{
+                  fontWeight: "600",
+                  color: "#2e7d32",
+                  fontSize: "16px",
+                }}
+              >
+                Vehicle License Plate
+              </span>
+            }
             rules={[{ required: true, message: "Please enter vehicle number" }]}
-            style={{ marginBottom: "24px" }}
           >
-            <Input 
-              placeholder="e.g. WP-KL 4455" 
+            <Input
+              placeholder="e.g. WP-KL 4455"
               prefix={<CarOutlined style={{ color: "#4caf50" }} />}
               style={{
                 height: "50px",
@@ -191,19 +202,14 @@ export default function EntryFormPage() {
                 fontSize: "16px",
                 border: "2px solid #c8e6c9",
                 backgroundColor: "#f1f8e9",
-                transition: "all 0.3s ease",
-                boxShadow: "inset 0 2px 4px rgba(76, 175, 80, 0.1)"
               }}
             />
           </Form.Item>
 
-          <Form.Item 
-            name="containerId" 
-            label={<span style={{ fontWeight: "600", color: "#2e7d32", fontSize: "16px" }}>Container ID (Optional)</span>}
-            style={{ marginBottom: "32px" }}
-          >
-            <Input 
-              placeholder="e.g. CMAU7654321" 
+          {/* Container ID */}
+          <Form.Item name="containerId" label="Container ID (Optional)">
+            <Input
+              placeholder="e.g. CMAU7654321"
               prefix={<ContainerOutlined style={{ color: "#4caf50" }} />}
               style={{
                 height: "50px",
@@ -211,47 +217,42 @@ export default function EntryFormPage() {
                 fontSize: "16px",
                 border: "2px solid #c8e6c9",
                 backgroundColor: "#f1f8e9",
-                transition: "all 0.3s ease",
-                boxShadow: "inset 0 2px 4px rgba(76, 175, 80, 0.1)"
               }}
             />
           </Form.Item>
 
-          {/* OCR buttons */}
-          <div style={{ 
-            marginBottom: "32px",
-            background: "linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)",
-            padding: "24px",
-            borderRadius: "16px",
-            border: "2px solid rgba(76, 175, 80, 0.2)",
-            boxShadow: "0 8px 24px rgba(76, 175, 80, 0.15)"
-          }}>
-            <Title level={5} style={{ 
-              color: "#2e7d32", 
-              marginBottom: "20px",
-              fontWeight: "700",
-              textAlign: "center"
-            }}>
-              <ScanOutlined style={{ marginRight: "8px", color: "#4caf50" }} /> 
+          {/* OCR Buttons */}
+          <div
+            style={{
+              marginBottom: "32px",
+              background: "linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)",
+              padding: "24px",
+              borderRadius: "16px",
+              border: "2px solid rgba(76, 175, 80, 0.2)",
+            }}
+          >
+            <Title level={5} style={{ color: "#2e7d32", marginBottom: "20px" }}>
+              <ScanOutlined style={{ marginRight: "8px", color: "#4caf50" }} />
               Automatic Plate Detection
             </Title>
             <Row gutter={[16, 16]}>
               <Col xs={24} sm={12}>
-                <Upload customRequest={handleOCR} showUploadList={false} accept="image/*">
-                  <Button 
-                    icon={<UploadOutlined />} 
-                    loading={ocrLoading} 
+                <Upload
+                  customRequest={handleOCR}
+                  showUploadList={false}
+                  accept="image/*"
+                >
+                  <Button
+                    icon={<UploadOutlined />}
+                    loading={ocrLoading}
                     block
                     style={{
                       height: "48px",
                       borderRadius: "10px",
-                      fontWeight: "600",
-                      fontSize: "15px",
-                      background: "linear-gradient(135deg, #66bb6a 0%, #4caf50 100%)",
+                      background:
+                        "linear-gradient(135deg, #66bb6a 0%, #4caf50 100%)",
                       color: "white",
                       border: "none",
-                      boxShadow: "0 6px 20px rgba(76, 175, 80, 0.4)",
-                      transition: "all 0.3s ease"
                     }}
                   >
                     Upload Image
@@ -259,20 +260,17 @@ export default function EntryFormPage() {
                 </Upload>
               </Col>
               <Col xs={24} sm={12}>
-                <Button 
-                  icon={<CameraOutlined />} 
-                  onClick={() => setCameraOpen(true)} 
+                <Button
+                  icon={<CameraOutlined />}
+                  onClick={() => setCameraOpen(true)}
                   block
                   style={{
                     height: "48px",
                     borderRadius: "10px",
-                    fontWeight: "600",
-                    fontSize: "15px",
-                    background: "linear-gradient(135deg, #2e7d32 0%, #388e3c 100%)",
+                    background:
+                      "linear-gradient(135deg, #2e7d32 0%, #388e3c 100%)",
                     color: "white",
                     border: "none",
-                    boxShadow: "0 6px 20px rgba(46, 125, 50, 0.4)",
-                    transition: "all 0.3s ease"
                   }}
                 >
                   Use Camera
@@ -284,17 +282,10 @@ export default function EntryFormPage() {
           {/* Plant */}
           <Form.Item
             name="plant"
-            label={<span style={{ fontWeight: "600", color: "#2e7d32", fontSize: "16px" }}>Destination Plant</span>}
+            label="Destination Plant"
             rules={[{ required: true, message: "Please select a plant" }]}
-            style={{ marginBottom: "32px" }}
           >
-            <Select 
-              placeholder="Choose plant" 
-              size="large"
-              style={{
-                borderRadius: "12px"
-              }}
-            >
+            <Select placeholder="Choose plant" size="large">
               <Option value="Badalgama">
                 <Space>
                   <EnvironmentOutlined style={{ color: "#4caf50" }} />
@@ -311,33 +302,31 @@ export default function EntryFormPage() {
           </Form.Item>
 
           {/* Submit */}
-          <Form.Item style={{ marginBottom: 0 }}>
-            <Button 
-              type="primary" 
-              htmlType="submit" 
-              loading={loading} 
-              block 
+          <Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={loading}
+              block
               icon={<CheckCircleOutlined />}
               style={{
                 height: "56px",
                 borderRadius: "16px",
                 fontWeight: "700",
                 fontSize: "18px",
-                background: "linear-gradient(135deg, #2e7d32 0%, #4caf50 50%, #66bb6a 100%)",
+                background:
+                  "linear-gradient(135deg, #2e7d32 0%, #4caf50 50%, #66bb6a 100%)",
                 border: "none",
-                boxShadow: "0 12px 32px rgba(76, 175, 80, 0.4)",
-                transition: "all 0.3s ease",
-                textTransform: "uppercase",
-                letterSpacing: "1px"
               }}
             >
-              Complete Vehicle Entry <ArrowRightOutlined style={{ marginLeft: "8px" }} />
+              Complete Vehicle Entry{" "}
+              <ArrowRightOutlined style={{ marginLeft: "8px" }} />
             </Button>
           </Form.Item>
         </Form>
       </Card>
 
-      {/* Camera modal */}
+      {/* Camera Modal */}
       <Modal
         open={cameraOpen}
         onCancel={() => setCameraOpen(false)}
@@ -349,66 +338,29 @@ export default function EntryFormPage() {
         centered
         maskClosable={false}
         closeIcon={<CloseOutlined style={{ color: "white" }} />}
-        styles={{
-          header: {
-            background: "linear-gradient(135deg, #2e7d32 0%, #4caf50 100%)",
-            color: "white",
-            borderRadius: "16px 16px 0 0",
-            textAlign: "center",
-            padding: "24px",
-            border: "none"
-          },
-          body: {
-            padding: "24px",
-            background: "linear-gradient(135deg, #f1f8e9 0%, #e8f5e8 100%)"
-          },
-          footer: {
-            background: "linear-gradient(135deg, #f1f8e9 0%, #e8f5e8 100%)",
-            borderTop: "2px solid rgba(76, 175, 80, 0.2)",
-            padding: "16px 24px"
-          }
-        }}
         title={
           <Space style={{ color: "white", fontWeight: "700", fontSize: "18px" }}>
             <CameraOutlined /> License Plate Scanner
           </Space>
         }
-        okButtonProps={{
-          style: {
-            background: "linear-gradient(135deg, #2e7d32 0%, #4caf50 100%)",
-            border: "none",
-            borderRadius: "8px",
-            fontWeight: "600",
-            height: "40px"
-          }
-        }}
-        cancelButtonProps={{
-          style: {
-            borderRadius: "8px",
-            fontWeight: "600",
-            height: "40px",
-            borderColor: "#4caf50",
-            color: "#4caf50"
-          }
-        }}
       >
-        <div style={{
-          border: "3px dashed #4caf50",
-          borderRadius: "16px",
-          padding: "12px",
-          background: "rgba(255, 255, 255, 0.8)",
-          boxShadow: "inset 0 4px 8px rgba(76, 175, 80, 0.1)"
-        }}>
+        <div
+          style={{
+            border: "3px dashed #4caf50",
+            borderRadius: "16px",
+            padding: "12px",
+            background: "rgba(255, 255, 255, 0.8)",
+          }}
+        >
           <Webcam
             audio={false}
             ref={webcamRef}
             screenshotFormat="image/jpeg"
-            style={{ 
-              width: "100%", 
-              borderRadius: "12px", 
-              maxHeight: "300px", 
+            style={{
+              width: "100%",
+              borderRadius: "12px",
+              maxHeight: "300px",
               objectFit: "cover",
-              boxShadow: "0 4px 12px rgba(76, 175, 80, 0.2)"
             }}
           />
         </div>

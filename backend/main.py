@@ -8,14 +8,11 @@ import motor.motor_asyncio
 import os
 import logging
 from dotenv import load_dotenv
-
-# OCR imports
-import easyocr
-import numpy as np
-from PIL import Image
-import io
-import cv2
+import base64
 import re
+
+# 🔹 Mistral OCR SDK
+from mistralai import Mistral
 
 # ============================================================
 # 🌍 Load environment variables
@@ -24,9 +21,13 @@ load_dotenv()
 
 MONGO_URL = os.getenv("MONGO_URL")
 DB_NAME = os.getenv("DB_NAME", "vehicle_detector")
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 
 if not MONGO_URL:
     raise ValueError("❌ MONGO_URL is not set. Please check your .env file.")
+
+if not MISTRAL_API_KEY:
+    raise ValueError("❌ MISTRAL_API_KEY is not set. Please check your .env file.")
 
 # ============================================================
 # 🚀 FastAPI App Setup
@@ -56,11 +57,16 @@ def get_collection(name: str):
     return db[name]
 
 # ============================================================
-# 🔠 OCR Setup
+# 🔠 OCR Setup (Mistral)
 # ============================================================
-reader = easyocr.Reader(['en'], gpu=False)
+mistral_client = Mistral(api_key=MISTRAL_API_KEY)
+
+def encode_image_bytes(file_bytes: bytes) -> str:
+    """Convert raw bytes to base64 string."""
+    return base64.b64encode(file_bytes).decode("utf-8")
 
 def clean_plate_text(text: str) -> str:
+    """Correct common OCR mistakes in number plates."""
     text = text.upper()
     corrections = {"O": "0", "I": "1", "S": "5", "B": "8"}
     for wrong, right in corrections.items():
@@ -68,6 +74,7 @@ def clean_plate_text(text: str) -> str:
     return text
 
 def format_plate(detected: list) -> str:
+    """Format detected tokens into a single plate string."""
     plate = " ".join(detected).upper()
     plate = re.sub(r"\s+", " ", plate).strip()
     return plate
@@ -79,25 +86,35 @@ def format_plate(detected: list) -> str:
 async def ocr_image(file: UploadFile = File(...)):
     try:
         img_bytes = await file.read()
-        image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-        img_np = np.array(image)
+        base64_image = encode_image_bytes(img_bytes)
 
-        # Preprocess
-        gray = cv2.cvtColor(img_np, cv2.COLOR_BGR2GRAY)
-        gray = cv2.resize(gray, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
-        gray = cv2.GaussianBlur(gray, (3, 3), 0)
-        _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        # Send to Mistral OCR
+        ocr_response = mistral_client.ocr.process(
+            model="mistral-ocr-latest",
+            document={
+                "type": "image_url",
+                "image_url": f"data:image/jpeg;base64,{base64_image}"
+            },
+            include_image_base64=False
+        )
 
-        results = reader.readtext(thresh, detail=1)
+        # ✅ Convert response object to dict
+        ocr_data = ocr_response.dict()
 
+        # Extract text tokens from OCR
         detected = []
-        for (_, text, _) in results:
-            cleaned = re.sub(r"[^A-Z0-9 -]", "", text.upper())
-            if cleaned:
-                detected.append(clean_plate_text(cleaned))
+        for page in ocr_data.get("pages", []):
+            for block in page.get("blocks", []):
+                text = block.get("text", "").strip()
+                if text:
+                    cleaned = re.sub(r"[^A-Z0-9 -]", "", text.upper())
+                    if cleaned:
+                        detected.append(clean_plate_text(cleaned))
 
         detected_plate = format_plate(detected)
-        return {"status": "ok", "text": detected_plate}
+
+        return {"status": "ok", "text": detected_plate, "raw": ocr_data}
+
     except Exception as e:
         logging.error(f"❌ OCR failed: {e}")
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
@@ -105,7 +122,6 @@ async def ocr_image(file: UploadFile = File(...)):
 # ============================================================
 # 📡 Vehicle Endpoints
 # ============================================================
-
 class VehicleRequest(BaseModel):
     vehicleNo: str
     containerId: str | None = None
