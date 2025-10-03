@@ -10,9 +10,18 @@ import logging
 from dotenv import load_dotenv
 import base64
 import re
+from typing import Optional
 
 # 🔹 Mistral OCR SDK
 from mistralai import Mistral
+
+# ============================================================
+# 🔧 Configure Logging
+# ============================================================
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 # ============================================================
 # 🌍 Load environment variables
@@ -34,13 +43,16 @@ if not MISTRAL_API_KEY:
 # ============================================================
 app = FastAPI(title="Vehicle Detector API")
 
-# ✅ Fixed CORS
+# ✅ CORS Configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  # React dev server
-        "https://haycarb-vehicle-detector-frontend.vercel.app",  # Vercel prod
-        "*",  # TEMP: allow all (remove in prod)
+        "http://localhost:5173",  # Vite dev server
+        "http://localhost:3000",  # Alternative React port
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        "https://haycarb-vehicle-detector-frontend.vercel.app",  # Vercel
+        "https://vd-x0f8.onrender.com",  # Render frontend
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -62,6 +74,7 @@ async def startup_db_check():
     try:
         await client.admin.command("ping")
         logging.info("✅ Database connected successfully")
+        logging.info(f"📊 Using database: {DB_NAME}")
     except Exception as e:
         logging.error(f"❌ Database connection failed: {e}")
         raise e
@@ -69,13 +82,24 @@ async def startup_db_check():
 # ============================================================
 # 🛠 Health Check Endpoint
 # ============================================================
+@app.get("/")
+async def root():
+    return {"message": "Vehicle Detector API", "status": "online"}
+
 @app.get("/api/health")
 async def health_check():
     try:
         await client.admin.command("ping")
-        return JSONResponse(content={"status": "ok", "message": "✅ Database connected successfully"})
+        return JSONResponse(content={
+            "status": "ok", 
+            "message": "✅ Database connected successfully",
+            "database": DB_NAME
+        })
     except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "message": f"❌ DB connection failed: {e}"})
+        return JSONResponse(
+            status_code=500, 
+            content={"status": "error", "message": f"❌ DB connection failed: {e}"}
+        )
 
 
 # ============================================================
@@ -107,6 +131,7 @@ def format_plate(detected: list) -> str:
 @app.post("/api/ocr/")
 async def ocr_image(file: UploadFile = File(...)):
     try:
+        logging.info(f"📸 Processing OCR for file: {file.filename}")
         img_bytes = await file.read()
         base64_image = encode_image_bytes(img_bytes)
 
@@ -120,8 +145,12 @@ async def ocr_image(file: UploadFile = File(...)):
             include_image_base64=False
         )
 
-        # ✅ Convert response object to dict
-        ocr_data = ocr_response.dict()
+        # ✅ FIXED: Use model_dump() instead of dict() for Pydantic v2
+        try:
+            ocr_data = ocr_response.model_dump()
+        except AttributeError:
+            # Fallback for older Pydantic versions
+            ocr_data = ocr_response.dict()
 
         # Extract text tokens from OCR
         detected = []
@@ -134,12 +163,16 @@ async def ocr_image(file: UploadFile = File(...)):
                         detected.append(clean_plate_text(cleaned))
 
         detected_plate = format_plate(detected)
+        logging.info(f"✅ OCR detected: {detected_plate}")
 
         return {"status": "ok", "text": detected_plate, "raw": ocr_data}
 
     except Exception as e:
         logging.error(f"❌ OCR failed: {e}")
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+        return JSONResponse(
+            status_code=500, 
+            content={"status": "error", "message": str(e)}
+        )
 
 
 # ============================================================
@@ -147,25 +180,30 @@ async def ocr_image(file: UploadFile = File(...)):
 # ============================================================
 class VehicleRequest(BaseModel):
     vehicleNo: str
-    containerId: str | None = None
+    containerId: Optional[str] = None  # Fixed for Python < 3.10
     plant: str
 
 @app.get("/api/vehicles")
 async def get_vehicles():
     try:
+        logging.info("📋 Fetching all vehicles")
         collection = get_collection("vehicles")
-        vehicles = await collection.find().to_list(100)
+        vehicles = await collection.find().to_list(1000)  # Increased limit
+        
         for v in vehicles:
             v["id"] = str(v["_id"])
             del v["_id"]
+        
+        logging.info(f"✅ Found {len(vehicles)} vehicles")
         return vehicles
     except Exception as e:
         logging.error(f"❌ Error fetching vehicles: {e}")
-        raise HTTPException(status_code=500, detail="Database error")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @app.post("/api/vehicles")
 async def create_vehicle(data: VehicleRequest):
     try:
+        logging.info(f"➕ Creating vehicle: {data.vehicleNo}")
         collection = get_collection("vehicles")
 
         now_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
@@ -180,23 +218,52 @@ async def create_vehicle(data: VehicleRequest):
         }
 
         result = await collection.insert_one(vehicle)
-        return {"id": str(result.inserted_id), "status": "ok", "message": "✅ Vehicle added"}
+        logging.info(f"✅ Vehicle created with ID: {result.inserted_id}")
+        
+        return {
+            "id": str(result.inserted_id), 
+            "status": "ok", 
+            "message": "✅ Vehicle added",
+            "vehicle": {**vehicle, "id": str(result.inserted_id)}
+        }
     except Exception as e:
         logging.error(f"❌ Error creating vehicle: {e}")
-        raise HTTPException(status_code=500, detail="Database insert failed")
+        raise HTTPException(status_code=500, detail=f"Database insert failed: {str(e)}")
 
 @app.put("/api/vehicles/{id}/exit")
 async def mark_exit(id: str):
     try:
+        logging.info(f"🚪 Marking exit for vehicle: {id}")
         collection = get_collection("vehicles")
         now_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
         result = await collection.update_one(
-            {"_id": ObjectId(id)}, {"$set": {"outTime": now_utc, "status": "exited"}}
+            {"_id": ObjectId(id)}, 
+            {"$set": {"outTime": now_utc, "status": "exited"}}
         )
+        
         if result.modified_count == 0:
             raise HTTPException(status_code=404, detail="Vehicle not found")
-        return {"message": "✅ Vehicle marked as exited"}
+        
+        logging.info(f"✅ Vehicle {id} marked as exited")
+        return {"message": "✅ Vehicle marked as exited", "id": id}
     except Exception as e:
         logging.error(f"❌ Error marking exit: {e}")
-        raise HTTPException(status_code=500, detail="Database update failed")
+        raise HTTPException(status_code=500, detail=f"Database update failed: {str(e)}")
+
+@app.delete("/api/vehicles/{id}")
+async def delete_vehicle(id: str):
+    try:
+        logging.info(f"🗑️ Deleting vehicle: {id}")
+        collection = get_collection("vehicles")
+        
+        result = await collection.delete_one({"_id": ObjectId(id)})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Vehicle not found")
+        
+        logging.info(f"✅ Vehicle {id} deleted")
+        return {"message": "✅ Vehicle deleted", "id": id}
+    except Exception as e:
+        logging.error(f"❌ Error deleting vehicle: {e}")
+        raise HTTPException(status_code=500, detail=f"Database delete failed: {str(e)}")
