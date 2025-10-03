@@ -1,7 +1,14 @@
 import axios from "axios";
 
-// Base API URL (from env or default local FastAPI backend)
-const API = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+// Detect environment: "development" (local) vs "production" (deployed)
+const isDev = import.meta.env.MODE === "development";
+
+// Base API URL
+const API =
+  import.meta.env.VITE_API_URL || // ✅ If you define one in .env
+  (isDev
+    ? "http://localhost:8000/api" // 👨‍💻 Local FastAPI
+    : "https://vd-new.onrender.com/api"); // 🌍 Render backend
 
 // 🔹 Vehicle Endpoints
 export const fetchVehicles = () => axios.get(`${API}/vehicles`);
