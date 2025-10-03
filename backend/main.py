@@ -56,6 +56,28 @@ db = client[DB_NAME]
 def get_collection(name: str):
     return db[name]
 
+# ✅ Startup event to check DB connection
+@app.on_event("startup")
+async def startup_db_check():
+    try:
+        await client.admin.command("ping")
+        logging.info("✅ Database connected successfully")
+    except Exception as e:
+        logging.error(f"❌ Database connection failed: {e}")
+        raise e
+
+# ============================================================
+# 🛠 Health Check Endpoint
+# ============================================================
+@app.get("/api/health")
+async def health_check():
+    try:
+        await client.admin.command("ping")
+        return JSONResponse(content={"status": "ok", "message": "✅ Database connected successfully"})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": f"❌ DB connection failed: {e}"})
+
+
 # ============================================================
 # 🔠 OCR Setup (Mistral)
 # ============================================================
@@ -118,6 +140,7 @@ async def ocr_image(file: UploadFile = File(...)):
     except Exception as e:
         logging.error(f"❌ OCR failed: {e}")
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
 
 # ============================================================
 # 📡 Vehicle Endpoints
