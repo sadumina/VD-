@@ -42,22 +42,7 @@ export default function EntryFormPage() {
   const webcamRef = useRef(null);
 
   // ✅ OCR Handler (Upload)
-  const handleOCR = async ({ file }) => {
-    try {
-      setOcrLoading(true);
-      const res = await uploadOCR(file);
-      if (res.data.text) {
-        form.setFieldsValue({ vehicleNo: res.data.text });
-        message.success(`✅ Plate detected: ${res.data.text}`);
-      } else {
-        message.warning("⚠️ No text detected in the image");
-      }
-    } catch (err) {
-      message.error("❌ OCR failed: " + err.message);
-    } finally {
-      setOcrLoading(false);
-    }
-  };
+
 
   // ✅ OCR Handler (Camera)
   const captureAndScan = async () => {
@@ -221,64 +206,7 @@ export default function EntryFormPage() {
             />
           </Form.Item>
 
-          {/* OCR Buttons */}
-          <div
-            style={{
-              marginBottom: "32px",
-              background: "linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)",
-              padding: "24px",
-              borderRadius: "16px",
-              border: "2px solid rgba(76, 175, 80, 0.2)",
-            }}
-          >
-            <Title level={5} style={{ color: "#2e7d32", marginBottom: "20px" }}>
-              <ScanOutlined style={{ marginRight: "8px", color: "#4caf50" }} />
-              Automatic Plate Detection
-            </Title>
-            <Row gutter={[16, 16]}>
-              <Col xs={24} sm={12}>
-                <Upload
-                  customRequest={handleOCR}
-                  showUploadList={false}
-                  accept="image/*"
-                >
-                  <Button
-                    icon={<UploadOutlined />}
-                    loading={ocrLoading}
-                    block
-                    style={{
-                      height: "48px",
-                      borderRadius: "10px",
-                      background:
-                        "linear-gradient(135deg, #66bb6a 0%, #4caf50 100%)",
-                      color: "white",
-                      border: "none",
-                    }}
-                  >
-                    Upload Image
-                  </Button>
-                </Upload>
-              </Col>
-              <Col xs={24} sm={12}>
-                <Button
-                  icon={<CameraOutlined />}
-                  onClick={() => setCameraOpen(true)}
-                  block
-                  style={{
-                    height: "48px",
-                    borderRadius: "10px",
-                    background:
-                      "linear-gradient(135deg, #2e7d32 0%, #388e3c 100%)",
-                    color: "white",
-                    border: "none",
-                  }}
-                >
-                  Use Camera
-                </Button>
-              </Col>
-            </Row>
-          </div>
-
+         
           {/* Plant */}
           <Form.Item
             name="plant"

@@ -3,12 +3,13 @@ import axios from "axios";
 // Detect environment: "development" (local) vs "production" (deployed)
 const isDev = import.meta.env.MODE === "development";
 
-// Base API URL
+// ✅ Base API URL
 const API =
-  import.meta.env.VITE_API_URL || // ✅ If you define one in .env
+  import.meta.env.VITE_API_URL || // use .env if defined
   (isDev
-    ? "http://localhost:8000/api" // 👨‍💻 Local FastAPI
-    : "https://vd-new.onrender.com/api"); // 🌍 Render backend
+    ? "http://localhost:8000"        // 👨‍💻 Local FastAPI
+    : "https://vd-new.onrender.com"  // 🌍 Render backend
+  );
 
 // 🔹 Vehicle Endpoints
 export const fetchVehicles = () => axios.get(`${API}/vehicles`);
@@ -19,7 +20,7 @@ export const createVehicle = (data) =>
 export const markExit = (id) =>
   axios.put(`${API}/vehicles/${id}/exit`);
 
-// 🔹 OCR Upload (Mistral OCR through FastAPI)
+// 🔹 OCR Upload
 export const uploadOCR = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
