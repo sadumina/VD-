@@ -1,35 +1,20 @@
 services:
-  # Backend API Service
   - type: web
     name: vehicle-detector-api
     runtime: python
-    region: oregon  # Change to your preferred region (oregon, frankfurt, singapore, etc.)
-    plan: free  # or starter/standard depending on your plan
-    branch: main  # or master - your default git branch
-    rootDir: backend  # Path to your backend folder
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port 10000
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.7
       - key: MONGO_URL
-        sync: false  # ⚠️ Set this manually in Render Dashboard
+        sync: false
       - key: DB_NAME
         value: vehicle_detector_New
       - key: MISTRAL_API_KEY
-        sync: false  # ⚠️ Set this manually in Render Dashboard
-
-  # Frontend Service (Optional - if deploying frontend to Render too)
-  - type: web
-    name: vehicle-detector-frontend
-    runtime: static  # or node if using React
-    region: oregon
-    plan: free
-    branch: main
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    staticPublishPath: dist  # or build for Create React App
-    envVars:
-      - key: VITE_API_URL  # or REACT_APP_API_URL
-        value: https://vehicle-detector-api.onrender.com  # Your backend URL
+        sync: false
