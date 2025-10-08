@@ -192,19 +192,25 @@ export default function EntryFormPage() {
           </Form.Item>
 
           {/* Container ID */}
-          <Form.Item name="containerId" label="Container ID (Optional)">
-            <Input
-              placeholder="e.g. CMAU7654321"
-              prefix={<ContainerOutlined style={{ color: "#4caf50" }} />}
-              style={{
-                height: "50px",
-                borderRadius: "12px",
-                fontSize: "16px",
-                border: "2px solid #c8e6c9",
-                backgroundColor: "#f1f8e9",
-              }}
-            />
-          </Form.Item>
+         {/* Container ID */}
+<Form.Item
+  name="containerId"
+  label="Container ID"
+  rules={[{ required: true, message: "Please enter Container ID" }]}
+>
+  <Input
+    placeholder="e.g. CMAU7654321"
+    prefix={<ContainerOutlined style={{ color: "#4caf50" }} />}
+    style={{
+      height: "50px",
+      borderRadius: "12px",
+      fontSize: "16px",
+      border: "2px solid #c8e6c9",
+      backgroundColor: "#f1f8e9",
+    }}
+  />
+</Form.Item>
+
 
          
           {/* Plant */}

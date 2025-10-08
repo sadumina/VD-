@@ -22,6 +22,7 @@ import autoTable from "jspdf-autotable";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import haycarbLogo from "../assets/haycarb_logo.png";
 import {
   CarOutlined,
   CalendarOutlined,
@@ -89,56 +90,96 @@ export default function DashboardPage() {
   };
 
   const exportVehiclePDF = (vehicle) => {
-    const doc = new jsPDF();
-    doc.text("Haycarb Vehicle Report", 14, 15);
-    autoTable(doc, {
-      head: [["Field", "Value"]],
-      body: [
-        ["Vehicle No", vehicle.vehicleNo || "N/A"],
-        ["Container ID", vehicle.containerId || "–"],
-        ["Type", vehicle.type || "Unknown"],
-        ["Plant", vehicle.plant || "N/A"],
-        ["In Time", vehicle.inTime || "N/A"],
-        ["Out Time", vehicle.outTime || "Inside"],
-        ["Duration", formatDuration(vehicle.inTime, vehicle.outTime) || "N/A"],
-        ["Status", vehicle.status === "inside" ? "Inside" : "Exited"],
-      ],
-    });
-    doc.save(`${vehicle.vehicleNo || "vehicle"}.pdf`);
-  };
+  const doc = new jsPDF();
 
-  const printVehicle = (vehicle) => {
-    const printWindow = window.open("", "_blank");
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Vehicle Report - ${vehicle.vehicleNo}</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            h2 { color: #2E7D32; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            td, th { border: 1px solid #ddd; padding: 8px; }
-            th { background-color: #2E7D32; color: white; text-align: left; }
-          </style>
-        </head>
-        <body>
-          <h2>🚗 Vehicle Report</h2>
-          <table>
-            <tr><th>Vehicle No</th><td>${vehicle.vehicleNo || "N/A"}</td></tr>
-            <tr><th>Container ID</th><td>${vehicle.containerId || "–"}</td></tr>
-            <tr><th>Type</th><td>${vehicle.type || "Unknown"}</td></tr>
-            <tr><th>Plant</th><td>${vehicle.plant || "N/A"}</td></tr>
-            <tr><th>In Time</th><td>${vehicle.inTime || "N/A"}</td></tr>
-            <tr><th>Out Time</th><td>${vehicle.outTime || "Inside"}</td></tr>
-            <tr><th>Duration</th><td>${formatDuration(vehicle.inTime, vehicle.outTime) || "N/A"}</td></tr>
-            <tr><th>Status</th><td>${vehicle.status === "inside" ? "Inside" : "Exited"}</td></tr>
-          </table>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
-  };
+  // ✅ Add logo (top-left)
+  doc.addImage(haycarbLogo, "PNG", 14, 10, 25, 25);
+
+  // ✅ Title
+  doc.setFontSize(18);
+  doc.setTextColor(46, 125, 50); // Haycarb green
+  doc.text("Haycarb Vehicle Report", 105, 25, { align: "center" });
+
+  // ✅ Add line below title
+  doc.setDrawColor(46, 125, 50);
+  doc.line(14, 35, 196, 35);
+
+  // ✅ Vehicle data table
+  autoTable(doc, {
+    startY: 45,
+    head: [["Field", "Value"]],
+    body: [
+      ["Vehicle No", vehicle.vehicleNo || "N/A"],
+      ["Container ID", vehicle.containerId || "–"],
+      ["Type", vehicle.type || "Unknown"],
+      ["Plant", vehicle.plant || "N/A"],
+      ["In Time", vehicle.inTime || "N/A"],
+      ["Out Time", vehicle.outTime || "Inside"],
+      ["Duration", formatDuration(vehicle.inTime, vehicle.outTime) || "N/A"],
+      ["Status", vehicle.status === "inside" ? "Inside" : "Exited"],
+    ],
+    styles: { fontSize: 11 },
+    headStyles: { fillColor: [46, 125, 50] }, // Haycarb green header
+    alternateRowStyles: { fillColor: [240, 248, 240] }, // light greenish rows
+  });
+
+  // ✅ Footer
+  const dateStr = new Date().toLocaleString();
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text(`Report generated on ${dateStr}`, 14, doc.internal.pageSize.height - 10);
+
+  // ✅ Save PDF
+  doc.save(`${vehicle.vehicleNo || "vehicle"}.pdf`);
+};
+
+const printVehicle = (vehicle) => {
+  const dateStr = new Date().toLocaleString();
+
+  const printWindow = window.open("", "_blank");
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Vehicle Report - ${vehicle.vehicleNo}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h2 { color: #2E7D32; text-align: center; margin-bottom: 10px; }
+          .logo { display: block; margin: 0 auto 20px auto; max-height: 90px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          td, th { border: 1px solid #ddd; padding: 10px; font-size: 14px; }
+          th { background-color: #2E7D32; color: white; text-align: left; }
+          tr:nth-child(even) { background-color: #f9f9f9; }
+          .footer { margin-top: 30px; text-align: right; font-size: 12px; color: #555; }
+        </style>
+      </head>
+      <body>
+        <!-- Logo -->
+        <img src="${window.location.origin}/haycarb_logo.png" alt="Haycarb Logo" class="logo" />
+
+        <!-- Title -->
+        <h2>Haycarb Vehicle Report</h2>
+
+        <!-- Data Table -->
+        <table>
+          <tr><th>Vehicle No</th><td>${vehicle.vehicleNo || "N/A"}</td></tr>
+          <tr><th>Container ID</th><td>${vehicle.containerId || "–"}</td></tr>
+          <tr><th>Type</th><td>${vehicle.type || "Unknown"}</td></tr>
+          <tr><th>Plant</th><td>${vehicle.plant || "N/A"}</td></tr>
+          <tr><th>In Time</th><td>${vehicle.inTime || "N/A"}</td></tr>
+          <tr><th>Out Time</th><td>${vehicle.outTime || "Inside"}</td></tr>
+          <tr><th>Duration</th><td>${formatDuration(vehicle.inTime, vehicle.outTime) || "N/A"}</td></tr>
+          <tr><th>Status</th><td>${vehicle.status === "inside" ? "Inside" : "Exited"}</td></tr>
+        </table>
+
+        <!-- Footer -->
+        <div class="footer">Report generated on: ${dateStr}</div>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.print();
+};
+
 
   const getDurationHours = (inTime, outTime) => {
     const start = dayjs.utc(inTime);

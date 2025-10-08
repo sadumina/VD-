@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -8,19 +8,14 @@ import motor.motor_asyncio
 import os
 import logging
 from dotenv import load_dotenv
-import base64
-import re
 from typing import Optional
-
-# 🔹 Mistral OCR SDK
-from mistralai import Mistral
-
+import re
 # ============================================================
 # 🔧 Configure Logging
 # ============================================================
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
 # ============================================================
@@ -30,13 +25,9 @@ load_dotenv()
 
 MONGO_URL = os.getenv("MONGO_URL")
 DB_NAME = os.getenv("DB_NAME", "vehicle_detector")
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 
 if not MONGO_URL:
     raise ValueError("❌ MONGO_URL is not set. Please check your .env file.")
-
-if not MISTRAL_API_KEY:
-    raise ValueError("❌ MISTRAL_API_KEY is not set. Please check your .env file.")
 
 # ============================================================
 # 🚀 FastAPI App Setup
@@ -47,12 +38,10 @@ app = FastAPI(title="Vehicle Detector API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  
+        "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "http://localhost:3000",  
+        "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://haycarb-vehicle-detector-frontend.vercel.app",  # old Vercel domain if you used it
-        "https://vd-7xzvkspol-saduminas-projects.vercel.app",   # ✅ your current Vercel frontend
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -68,6 +57,14 @@ db = client[DB_NAME]
 def get_collection(name: str):
     return db[name]
 
+# ✅ Helper to fix ObjectId
+def fix_id(doc: dict) -> dict:
+    """Convert MongoDB _id -> id (string)."""
+    if "_id" in doc:
+        doc["id"] = str(doc["_id"])
+        del doc["_id"]
+    return doc
+
 # ✅ Startup event to check DB connection
 @app.on_event("startup")
 async def startup_db_check():
@@ -80,7 +77,7 @@ async def startup_db_check():
         raise e
 
 # ============================================================
-# 🛠 Health Check Endpoint
+# 🛠 Health Check
 # ============================================================
 @app.get("/")
 async def root():
@@ -91,125 +88,84 @@ async def health_check():
     try:
         await client.admin.command("ping")
         return JSONResponse(content={
-            "status": "ok", 
+            "status": "ok",
             "message": "✅ Database connected successfully",
             "database": DB_NAME
         })
     except Exception as e:
         return JSONResponse(
-            status_code=500, 
+            status_code=500,
             content={"status": "error", "message": f"❌ DB connection failed: {e}"}
         )
-
-
-# ============================================================
-# 🔠 OCR Setup (Mistral)
-# ============================================================
-mistral_client = Mistral(api_key=MISTRAL_API_KEY)
-
-def encode_image_bytes(file_bytes: bytes) -> str:
-    """Convert raw bytes to base64 string."""
-    return base64.b64encode(file_bytes).decode("utf-8")
-
-def clean_plate_text(text: str) -> str:
-    """Correct common OCR mistakes in number plates."""
-    text = text.upper()
-    corrections = {"O": "0", "I": "1", "S": "5", "B": "8"}
-    for wrong, right in corrections.items():
-        text = text.replace(wrong, right)
-    return text
-
-def format_plate(detected: list) -> str:
-    """Format detected tokens into a single plate string."""
-    plate = " ".join(detected).upper()
-    plate = re.sub(r"\s+", " ", plate).strip()
-    return plate
-
-# ============================================================
-# 📸 OCR Endpoint
-# ============================================================
-@app.post("/api/ocr/")
-async def ocr_image(file: UploadFile = File(...)):
-    try:
-        logging.info(f"📸 Processing OCR for file: {file.filename}")
-        img_bytes = await file.read()
-        base64_image = encode_image_bytes(img_bytes)
-
-        # Send to Mistral OCR
-        ocr_response = mistral_client.ocr.process(
-            model="mistral-ocr-latest",
-            document={
-                "type": "image_url",
-                "image_url": f"data:image/jpeg;base64,{base64_image}"
-            },
-            include_image_base64=False
-        )
-
-        # ✅ FIXED: Use model_dump() instead of dict() for Pydantic v2
-        try:
-            ocr_data = ocr_response.model_dump()
-        except AttributeError:
-            # Fallback for older Pydantic versions
-            ocr_data = ocr_response.dict()
-
-        # Extract text tokens from OCR
-        detected = []
-        for page in ocr_data.get("pages", []):
-            for block in page.get("blocks", []):
-                text = block.get("text", "").strip()
-                if text:
-                    cleaned = re.sub(r"[^A-Z0-9 -]", "", text.upper())
-                    if cleaned:
-                        detected.append(clean_plate_text(cleaned))
-
-        detected_plate = format_plate(detected)
-        logging.info(f"✅ OCR detected: {detected_plate}")
-
-        return {"status": "ok", "text": detected_plate, "raw": ocr_data}
-
-    except Exception as e:
-        logging.error(f"❌ OCR failed: {e}")
-        return JSONResponse(
-            status_code=500, 
-            content={"status": "error", "message": str(e)}
-        )
-
 
 # ============================================================
 # 📡 Vehicle Endpoints
 # ============================================================
 class VehicleRequest(BaseModel):
     vehicleNo: str
-    containerId: Optional[str] = None  # Fixed for Python < 3.10
+    containerId: Optional[str] = None
     plant: str
 
+# 🔹 Get ALL vehicles
 @app.get("/api/vehicles")
 async def get_vehicles():
     try:
-        logging.info("📋 Fetching all vehicles")
         collection = get_collection("vehicles")
-        vehicles = await collection.find().to_list(1000)  # Increased limit
-        
-        for v in vehicles:
-            v["id"] = str(v["_id"])
-            del v["_id"]
-        
-        logging.info(f"✅ Found {len(vehicles)} vehicles")
-        return vehicles
+        vehicles = await collection.find().to_list(1000)
+        return [fix_id(v) for v in vehicles]
     except Exception as e:
-        logging.error(f"❌ Error fetching vehicles: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
+# 🔹 Get ONLY inside vehicles
+@app.get("/api/vehicles/inside")
+async def get_inside_vehicles():
+    try:
+        collection = get_collection("vehicles")
+        vehicles = await collection.find({"status": "inside"}).to_list(1000)
+        return [fix_id(v) for v in vehicles]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+# 🔹 Get ONLY exited vehicles
+@app.get("/api/vehicles/exited")
+async def get_exited_vehicles():
+    try:
+        collection = get_collection("vehicles")
+        vehicles = await collection.find({"status": "exited"}).to_list(1000)
+        return [fix_id(v) for v in vehicles]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+# 🔹 Create a new vehicle entry (with restriction)
 @app.post("/api/vehicles")
 async def create_vehicle(data: VehicleRequest):
     try:
-        logging.info(f"➕ Creating vehicle: {data.vehicleNo}")
         collection = get_collection("vehicles")
 
+        # 1️⃣ Validate Sri Lankan vehicle number format
+        plate_pattern = r"^[A-Z]{1,3}-[A-Z]{0,2}-?\d{4}$"
+        if not re.match(plate_pattern, data.vehicleNo.upper()):
+            return {
+                "status": "error",
+                "message": f"❌ Invalid vehicle number: {data.vehicleNo}. Please use a valid Sri Lankan plate format (e.g., WP-KL-2099)."
+            }
+
+        # 2️⃣ Prevent double entry if already inside
+        existing = await collection.find_one({
+            "vehicleNo": data.vehicleNo,
+            "status": "inside"
+        })
+        if existing:
+            return {
+                "status": "error",
+                "message": f"❌ Vehicle {data.vehicleNo} is already inside."
+            }
+
+        # 3️⃣ Insert if valid
         now_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
         vehicle = {
-            "vehicleNo": data.vehicleNo,
+            "vehicleNo": data.vehicleNo.upper(),
             "containerId": data.containerId,
             "plant": data.plant,
             "inTime": now_utc,
@@ -218,52 +174,47 @@ async def create_vehicle(data: VehicleRequest):
         }
 
         result = await collection.insert_one(vehicle)
-        logging.info(f"✅ Vehicle created with ID: {result.inserted_id}")
-        
+        vehicle["_id"] = result.inserted_id
+
         return {
-            "id": str(result.inserted_id), 
-            "status": "ok", 
-            "message": "✅ Vehicle added",
-            "vehicle": {**vehicle, "id": str(result.inserted_id)}
+            "status": "ok",
+            "message": "✅ Vehicle entered successfully",
+            "vehicle": fix_id(vehicle)
         }
     except Exception as e:
         logging.error(f"❌ Error creating vehicle: {e}")
         raise HTTPException(status_code=500, detail=f"Database insert failed: {str(e)}")
 
+
+# 🔹 Mark vehicle exit
 @app.put("/api/vehicles/{id}/exit")
 async def mark_exit(id: str):
     try:
-        logging.info(f"🚪 Marking exit for vehicle: {id}")
         collection = get_collection("vehicles")
         now_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
         result = await collection.update_one(
-            {"_id": ObjectId(id)}, 
+            {"_id": ObjectId(id), "status": "inside"},  # only inside can exit
             {"$set": {"outTime": now_utc, "status": "exited"}}
         )
-        
+
         if result.modified_count == 0:
-            raise HTTPException(status_code=404, detail="Vehicle not found")
-        
-        logging.info(f"✅ Vehicle {id} marked as exited")
-        return {"message": "✅ Vehicle marked as exited", "id": id}
+            raise HTTPException(status_code=404, detail="Vehicle not found or already exited")
+
+        return {"status": "ok", "message": "✅ Vehicle marked as exited", "id": id}
     except Exception as e:
-        logging.error(f"❌ Error marking exit: {e}")
         raise HTTPException(status_code=500, detail=f"Database update failed: {str(e)}")
 
+# 🔹 Delete vehicle
 @app.delete("/api/vehicles/{id}")
 async def delete_vehicle(id: str):
     try:
-        logging.info(f"🗑️ Deleting vehicle: {id}")
         collection = get_collection("vehicles")
-        
         result = await collection.delete_one({"_id": ObjectId(id)})
-        
+
         if result.deleted_count == 0:
             raise HTTPException(status_code=404, detail="Vehicle not found")
-        
-        logging.info(f"✅ Vehicle {id} deleted")
-        return {"message": "✅ Vehicle deleted", "id": id}
+
+        return {"status": "ok", "message": "✅ Vehicle deleted", "id": id}
     except Exception as e:
-        logging.error(f"❌ Error deleting vehicle: {e}")
         raise HTTPException(status_code=500, detail=f"Database delete failed: {str(e)}")
