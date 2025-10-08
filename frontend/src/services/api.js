@@ -1,7 +1,8 @@
 import axios from "axios";
 
-// ✅ Base API URL (local FastAPI)
-const API = "http://localhost:8000/api";
+// ✅ Base API URL
+const API =
+  import.meta.env.VITE_API_URL || "https://vd-final.onrender.com/api";
 
 // 🔹 Vehicle Endpoints
 export const fetchVehicles = () => axios.get(`${API}/vehicles`);
