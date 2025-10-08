@@ -35,6 +35,7 @@ if not MONGO_URL:
 app = FastAPI(title="Vehicle Detector API")
 
 # ✅ CORS Configuration
+# ✅ CORS Configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -42,8 +43,9 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://vd-frontend.onrender.com",  # 👈 your Render static site frontend
-        "https://your-netlify-site.netlify.app",  # 👈 if you’re using Netlify
+        "https://vd-s51n.vercel.app",      # 👈 your Vercel frontend
+        "https://vd-frontend.onrender.com", # (keep if you still use Render frontend)
+        "https://your-netlify-site.netlify.app", # (remove if not using Netlify)
     ],
     allow_credentials=True,
     allow_methods=["*"],
