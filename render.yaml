@@ -1,8 +1,9 @@
 services:
+  # Backend API Service
   - type: web
     name: vehicle-detector-api
     runtime: python
-    region: oregon
+    region: oregon  # Change to your preferred region
     plan: free
     branch: main
     rootDir: backend
@@ -13,8 +14,20 @@ services:
       - key: PYTHON_VERSION
         value: 3.12.7
       - key: MONGO_URL
-        sync: false
+        sync: false  # ⚠️ Set manually in Render Dashboard
       - key: DB_NAME
         value: vehicle_detector_New
-      - key: MISTRAL_API_KEY
-        sync: false
+
+  # Frontend Service
+  - type: web
+    name: vehicle-detector-frontend
+    runtime: static
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://vehicle-detector-api.onrender.com
