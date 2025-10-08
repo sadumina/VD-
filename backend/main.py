@@ -47,12 +47,12 @@ app = FastAPI(title="Vehicle Detector API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:3000",  # Alternative React port
+        "http://localhost:5173",  
         "http://127.0.0.1:5173",
+        "http://localhost:3000",  
         "http://127.0.0.1:3000",
-        "https://haycarb-vehicle-detector-frontend.vercel.app",  # Vercel
-        "https://vd-x0f8.onrender.com",  # Render frontend
+        "https://haycarb-vehicle-detector-frontend.vercel.app",  # old Vercel domain if you used it
+        "https://vd-7xzvkspol-saduminas-projects.vercel.app",   # ✅ your current Vercel frontend
     ],
     allow_credentials=True,
     allow_methods=["*"],
