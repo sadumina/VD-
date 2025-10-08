@@ -42,11 +42,14 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "https://vd-frontend.onrender.com",  # 👈 your Render static site frontend
+        "https://your-netlify-site.netlify.app",  # 👈 if you’re using Netlify
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ============================================================
 # 🔗 MongoDB Connection
